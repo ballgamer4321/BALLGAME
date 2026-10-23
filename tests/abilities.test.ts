@@ -1,0 +1,130 @@
+import { describe, expect, it } from 'vitest';
+import { MATCH_BALLS, RULES } from '../src/shared/config';
+import { createWorld, stepWorld } from '../src/simulation/world';
+
+const duel = (a: string, b = 'jade') => createWorld(11, [a, b], [0, Math.PI]);
+const advance = (world: ReturnType<typeof duel>, count: number) => {
+  for (let i = 0; i < count && world.phase === 'running'; i++) stepWorld(world);
+};
+
+describe('eight distinct ball abilities', () => {
+  it('all definitions describe a trigger and a different power', () => {
+    expect(MATCH_BALLS).toHaveLength(8);
+    expect(new Set(MATCH_BALLS.map(ball => ball.ability)).size).toBe(8);
+    expect(MATCH_BALLS.every(ball => ball.trigger && ball.ability)).toBe(true);
+  });
+
+  it('Taran dashes and returns to base speed after the boost', () => {
+    const world = duel('amber', 'steel');
+    const ball = world.balls[0];
+    const base = Math.hypot(ball.vx, ball.vy);
+    stepWorld(world);
+    expect(ball.dashArmed).toBe(true);
+    expect(Math.hypot(ball.vx, ball.vy)).toBeGreaterThan(base);
+    advance(world, 43);
+    expect(ball.dashUntil).toBe(0);
+  });
+
+  it('Żmija poisons once per contact and poison expires', () => {
+    const world = duel('jade', 'violet');
+    const [a, b] = world.balls;
+    a.x = -a.radius; b.x = b.radius; a.y = b.y = 0;
+    a.vx = 1; b.vx = -1; a.vy = b.vy = 0;
+    stepWorld(world);
+    expect(b.poisonedUntil).toBeGreaterThan(world.tick);
+    a.x = -7; b.x = 7; a.vx = b.vx = a.vy = b.vy = 0;
+    const hp = b.hp;
+    advance(world, 61);
+    expect(b.hp).toBe(hp - 3);
+    advance(world, 180);
+    const expiredHp = b.hp;
+    advance(world, 70);
+    expect(b.hp).toBe(expiredHp);
+  });
+
+  it('Pryzmat fires a wall beam with cooldown', () => {
+    const world = duel('violet', 'steel');
+    const [a, b] = world.balls;
+    a.x = RULES.width / 2 - a.radius - 0.01; a.y = b.y = 0;
+    a.vx = 8; a.vy = 0; b.x = 0; b.vx = b.vy = 0;
+    stepWorld(world);
+    expect(b.hp).toBe(b.maxHp - 7);
+    expect(world.events.some(event => event.type === 'beam')).toBe(true);
+    expect(a.abilityReadyAt).toBeGreaterThan(world.tick);
+  });
+
+  it('Bastion shield absorbs damage then expires', () => {
+    const world = duel('steel', 'violet');
+    const [a, b] = world.balls;
+    a.vx = b.vx = a.vy = b.vy = 0;
+    stepWorld(world);
+    expect(a.shield).toBe(12);
+    a.x = -a.radius; b.x = b.radius; a.y = b.y = 0; a.vx = 1; b.vx = -1;
+    stepWorld(world);
+    expect(a.hp).toBe(a.maxHp);
+    expect(a.shield).toBe(2);
+    a.x = -7; b.x = 7; a.vx = b.vx = 0;
+    advance(world, 122);
+    expect(a.shield).toBe(0);
+  });
+
+  it('Pulsar damages a nearby target with a timed wave', () => {
+    const world = duel('gold', 'steel');
+    const [a, b] = world.balls;
+    a.x = -1.5; b.x = 1.5; a.y = b.y = 0;
+    a.vx = b.vx = a.vy = b.vy = 0;
+    stepWorld(world);
+    expect(b.hp).toBe(b.maxHp - 12);
+    expect(world.events.some(event => event.type === 'power' && event.radius === 6)).toBe(true);
+  });
+
+  it('Szron slows a nearby enemy temporarily', () => {
+    const world = duel('cyan', 'violet');
+    const [a, b] = world.balls;
+    a.x = -1.7; b.x = 1.7; a.y = b.y = 0;
+    a.vx = 0; a.vy = 0; b.vx = 8; b.vy = 0;
+    stepWorld(world);
+    expect(b.slowedUntil).toBeGreaterThan(world.tick);
+    expect(b.vx).toBeCloseTo(8 * 0.5);
+    expect(b.hp).toBe(b.maxHp - 6);
+    advance(world, 151);
+    expect(b.slowedUntil).toBe(0);
+  });
+
+  it('Siewca launches a projectile after a wall bounce', () => {
+    const world = duel('orange', 'violet');
+    const [a, b] = world.balls;
+    a.x = RULES.width / 2 - a.radius - 0.01; a.y = 0;
+    a.vx = 8; a.vy = 0; b.x = 5; b.y = 0; b.vx = b.vy = 0;
+    stepWorld(world);
+    expect(world.events.some(event => event.type === 'shot')).toBe(true);
+    expect(world.projectiles).toHaveLength(1);
+    advance(world, 30);
+    expect(b.hp).toBeLessThan(b.maxHp);
+  });
+
+  it('Echo creates a satellite that strikes once and expires', () => {
+    const world = duel('pink', 'violet');
+    const [a, b] = world.balls;
+    a.x = -1.3; b.x = 1.3; a.y = b.y = 0;
+    a.vx = b.vx = a.vy = b.vy = 0;
+    stepWorld(world);
+    expect(a.echoUntil).toBeGreaterThan(world.tick);
+    stepWorld(world);
+    expect(a.echoHit).toBe(true);
+    expect(b.hp).toBe(b.maxHp - 8);
+    advance(world, 121);
+    expect(a.echoUntil).toBeLessThanOrEqual(world.tick);
+  });
+
+  it('every pair finishes within the limit without invalid physics', () => {
+    for (const first of MATCH_BALLS) for (const second of MATCH_BALLS) {
+      const world = createWorld(17, [first.id, second.id]);
+      while (world.phase === 'running') stepWorld(world);
+      expect(world.tick).toBeLessThanOrEqual(RULES.maxTicks);
+      expect(world.hits).toBeGreaterThan(0);
+      expect(world.collisionLimitHits).toBe(0);
+      expect(world.balls.every(ball => Number.isFinite(ball.hp) && Number.isFinite(ball.x) && Number.isFinite(ball.y))).toBe(true);
+    }
+  });
+});
