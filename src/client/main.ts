@@ -39,7 +39,6 @@ let running = false, paused = false, speed = 1, accumulator = 0;
 let online = false;
 let localAngle = 0;
 let onlineAim: { setAngle: (angle: number) => void; canAim: () => boolean; showMenu: () => void; leave: () => void } | undefined;
-let snapshotTime = 0;
 let lastNetworkPhase = '';
 const audio = new GameAudio();
 let lowEffects = localStorage.getItem('orbita-effects') === 'low' || (localStorage.getItem('orbita-effects') !== 'high' && (matchMedia('(pointer: coarse)').matches || innerWidth <= 620));
@@ -252,12 +251,15 @@ function finish() {
 let last = performance.now();
 function frame(now: number) {
   const delta = Math.min((now - last) / 1000, 0.1); last = now;
-  if (running && !paused && !online) {
-    accumulator += delta * speed;
+  if (running && !paused) {
+    accumulator += delta * (online ? 1 : speed);
     while (accumulator >= RULES.step && running) {
       arena.beforeStep(world); stepWorld(world); arena.afterStep(world); audio.playEvents(world.events, world.tick);
       accumulator -= RULES.step;
-      if (world.phase === 'finished') finish();
+      if (world.phase === 'finished') {
+        if (online) { running = false; get('status').textContent = 'Czekam na wynik…'; }
+        else finish();
+      }
     }
     updateHud();
     if (running && world.tick > RULES.overtimeTick) {
@@ -265,7 +267,7 @@ function frame(now: number) {
       get('hint').textContent = 'Arena kończy przeciągającą się walkę, stopniowo odbierając zdrowie obu kulkom.';
     }
   }
-  arena.render(world, online ? Math.min(1, (now - snapshotTime) / 50) : running && !paused ? accumulator / RULES.step : 1, delta, running && !paused);
+  arena.render(world, running && !paused ? accumulator / RULES.step : 1, delta, running && !paused);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -311,7 +313,7 @@ onlineAim = connectRooms(state => {
   lastNetworkPhase = state.phase;
   arena.clearAimPreview();
   arena.beforeStep(world);
-  world = { ...state.world, contacts: new Set(), collisionLimitHits: 0 };
+  world = { ...state.world, contacts: new Set(state.world.contacts), collisionLimitHits: state.world.collisionLimitHits };
   arena.afterStep(world);
   audio.playEvents(world.events, world.tick);
   world.balls.forEach((ball,i) => {
@@ -320,7 +322,7 @@ onlineAim = connectRooms(state => {
     if (def && label) label.textContent = def.name;
     if (def) arena.setBallColor(i, def.color);
   });
-  seed = world.seed; snapshotTime = performance.now();
+  seed = world.seed; accumulator = 0;
   running = state.phase === 'fight'; paused = false;
   updateHud();
   if(state.phase==='fight'){get('status').textContent='Walka';get('hint').textContent=state.mode==='2v2'?'Cztery kulki walczą w dwóch drużynach. Wynik i obrażenia liczy serwer.':'Obserwuj automatyczny pojedynek. Wynik i obrażenia liczy serwer.';}

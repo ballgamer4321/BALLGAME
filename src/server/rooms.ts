@@ -11,11 +11,34 @@ export interface Room {
   picks: Record<string,string>; angles: Record<string,number>;
   collectionUsed: Set<string>; rematch: Set<string>;
 }
+export interface StoredRoom extends Omit<Room, 'ready' | 'disconnected' | 'forfeited' | 'collectionUsed' | 'rematch' | 'world'> {
+  ready: string[]; disconnected: [string, number][]; forfeited: string[];
+  collectionUsed: string[]; rematch: string[];
+  world: (Omit<World, 'contacts'> & { contacts: string[] }) | null;
+}
+
+export function serializeRoom(room: Room): StoredRoom {
+  return { ...room, ready: [...room.ready], disconnected: [...room.disconnected],
+    forfeited: [...room.forfeited], collectionUsed: [...room.collectionUsed], rematch: [...room.rematch],
+    world: room.world ? { ...room.world, contacts: [...room.world.contacts] } : null };
+}
+
+export function deserializeRoom(data: StoredRoom): Room {
+  return { ...data, ready: new Set(data.ready), disconnected: new Map(data.disconnected),
+    forfeited: new Set(data.forfeited), collectionUsed: new Set(data.collectionUsed), rematch: new Set(data.rematch),
+    world: data.world ? { ...data.world, contacts: new Set(data.world.contacts) } : null };
+}
 export class Rooms {
   readonly rooms = new Map<string, Room>();
   private membership = new Map<string,string>();
   constructor(private winsToMatch = 3) {
     if (!Number.isInteger(winsToMatch) || winsToMatch < 1 || winsToMatch > 9) throw new Error('Nieprawidłowy próg zwycięstw');
+  }
+  importRoom(data: StoredRoom): Room {
+    const room = deserializeRoom(data);
+    this.rooms.set(room.code, room);
+    for (const player of room.players) this.membership.set(player, room.code);
+    return room;
   }
   create(player: string, code: string, mode: RoomMode = '1v1'): Room {
     if (!/^[A-Z0-9]{6}$/.test(code) || this.rooms.has(code) || this.membership.has(player) || this.rooms.size >= 100 || !['1v1','2v2','bot'].includes(mode)) throw new Error('Nie można utworzyć pokoju');
@@ -145,6 +168,6 @@ export class Rooms {
     return {code:room.code,mode:room.mode,slot:room.players.indexOf(player),phase:room.phase,round:room.round,score:[...room.score],deadline:room.deadline?room.deadline-room.clock:0,
       offer:room.offers[player]??[],pick:room.picks[player]??null,angleLocked:room.angles[player]!==undefined,collectionUsed:room.collectionUsed.has(player),rematchReady:room.rematch.size,rematchAvailable:room.forfeited.size===0,
       players:room.players.map((id,slot)=>({ready:room.ready.has(id),chosen:!!room.picks[id],connected:!room.disconnected.has(id)&&!room.forfeited.has(id),bot:id.startsWith('bot:'),team:slot%2})),
-      world:world?{tick:world.tick,seed:world.seed,phase:world.phase,balls:world.balls.map(b=>({...b})),winner:world.winner,reason:world.reason,hits:world.hits,events:world.events.map(e=>({...e})),projectiles:world.projectiles.map(p=>({...p}))}:null};
+      world:world?{tick:world.tick,seed:world.seed,phase:world.phase,balls:world.balls.map(b=>({...b})),winner:world.winner,reason:world.reason,hits:world.hits,events:world.events.map(e=>({...e})),projectiles:world.projectiles.map(p=>({...p})),contacts:[...world.contacts],collisionLimitHits:world.collisionLimitHits}:null};
   }
 }

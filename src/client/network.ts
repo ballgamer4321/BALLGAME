@@ -15,12 +15,16 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
   const code = el<HTMLInputElement>('room-code');
   code.value = new URLSearchParams(location.search).get('room')?.toUpperCase().slice(0,6) || '';
   let socket: WebSocket | undefined;
-  const onlineConfigured=!import.meta.env.PROD || !!import.meta.env.VITE_WS_URL?.trim();
+  const hosted=import.meta.env.PROD && !import.meta.env.VITE_WS_URL?.trim();
+  let onlineConfigured=!hosted;
   let previousPhase='';
   let currentSlot = 0;
   let canAim = false;
   let leaving = false;
   let sessionToken = sessionStorage.getItem('orbita-room-token');
+  let sessionCode = sessionStorage.getItem('orbita-room-code');
+  let pollTimer: ReturnType<typeof setTimeout> | undefined;
+  let httpQueue = Promise.resolve();
   const status = el('network-status');
   let currentState:Snapshot|null=null;
   let roundKey='';
@@ -80,20 +84,14 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     confirm.textContent=data.phase==='aim'?'Potwierdź kierunek ↗':'Potwierdź kulkę i kierunek ↗';
     pickEl('selection-note').textContent=pickerError || (myChoice?`Wybrano ${chosen} z ${data.players.length}. Walka ruszy po decyzji wszystkich.`:'Walka ruszy, gdy wszyscy gracze potwierdzą kulkę i kierunek.');
   }
-  function send(action: {type:string;[key:string]:unknown}) {
-    if (socket?.readyState === WebSocket.OPEN) { socket.send(JSON.stringify(action)); return; }
-    if (socket?.readyState === WebSocket.CONNECTING) return;
-    status.textContent = 'Łączenie…';
-    const endpoint=import.meta.env.VITE_WS_URL?.trim() || `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`;
-    socket = new WebSocket(endpoint);
-    socket.onopen = () => socket!.send(JSON.stringify(action));
-    socket.onmessage = event => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'error') { status.textContent = data.message;pickerError=data.message;choicePending=false;renderPicker(); if(action.type==='resume'){sessionStorage.removeItem('orbita-room-token');sessionToken=null;onLeave();} return; }
-      if (data.type === 'session') {sessionToken=data.token;sessionStorage.setItem('orbita-room-token',data.token);return;}
-      if (data.type === 'left') {sessionStorage.removeItem('orbita-room-token');sessionToken=null;onLeave();return;}
+  function handleData(data: Snapshot & { type: string; token?: string; message?: string }, requestedType='') {
+      if (data.type === 'error') { status.textContent = data.message || 'Błąd serwera';pickerError=data.message || 'Błąd serwera';choicePending=false;renderPicker(); if(requestedType==='resume' && hosted){sessionStorage.removeItem('orbita-room-token');sessionStorage.removeItem('orbita-room-code');sessionToken=null;sessionCode=null;onLeave();} return; }
+      if (data.token) {sessionToken=data.token;sessionStorage.setItem('orbita-room-token',data.token);}
+      if (data.type === 'session') return;
+      if (data.type === 'left') {sessionStorage.removeItem('orbita-room-token');sessionStorage.removeItem('orbita-room-code');sessionToken=null;sessionCode=null;onLeave();return;}
       if (data.type !== 'state') return;
       currentState=data;
+      sessionCode=data.code;sessionStorage.setItem('orbita-room-code',data.code);
       currentSlot = data.slot;
       const nextRoundKey=`${data.code}:${data.round}`;
       if(data.phase==='select' && (roundKey!==nextRoundKey || previousPhase==='match_result')){
@@ -128,15 +126,58 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
       const url = new URL(location.href); url.searchParams.set('room', data.code); link.value = url.href;
       onState(data);
       previousPhase=data.phase;
-    };
+  }
+  function schedulePoll() {
+    if(!hosted || !sessionToken || !sessionCode || leaving)return;
+    clearTimeout(pollTimer);
+    const delay=currentState?.phase==='fight'?1100:currentState?.phase==='match_result'?2500:650;
+    pollTimer=setTimeout(()=>send({type:'poll'}),delay);
+  }
+  function send(action: {type:string;[key:string]:unknown}) {
+    if(hosted){
+      clearTimeout(pollTimer);
+      httpQueue=httpQueue.catch(()=>{}).then(async()=>{
+        const body={...action,code:action.code ?? sessionCode,token:sessionToken};
+        try{
+          const response=await fetch('/api/room',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),cache:'no-store'});
+          const data=await response.json();
+          handleData(data,action.type);
+          if(!response.ok && (response.status===401 || response.status===404) && !['create','join'].includes(action.type)){
+            sessionStorage.removeItem('orbita-room-token');sessionStorage.removeItem('orbita-room-code');
+            sessionToken=null;sessionCode=null;onLeave();return;
+          }
+          if(!response.ok && response.status>=500)status.textContent=data.message || 'Serwer gry jest chwilowo niedostępny.';
+          if(!response.ok && action.type==='leave')leaving=false;
+        }catch{status.textContent='Połączenie przerwane. Próbuję ponownie…';choicePending=false;leaving=false;renderPicker();}
+        schedulePoll();
+      });
+      return;
+    }
+    if (socket?.readyState === WebSocket.OPEN) { socket.send(JSON.stringify(action)); return; }
+    if (socket?.readyState === WebSocket.CONNECTING) return;
+    status.textContent = 'Łączenie…';
+    const endpoint=import.meta.env.VITE_WS_URL?.trim() || `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`;
+    socket = new WebSocket(endpoint);
+    socket.onopen = () => socket!.send(JSON.stringify(action));
+    socket.onmessage = event => handleData(JSON.parse(event.data));
     socket.onclose = () => {status.textContent = 'Połączenie przerwane. Próbuję wrócić do pokoju…';el<HTMLButtonElement>('ready-room').disabled=true;if(!leaving && sessionToken)setTimeout(()=>send({type:'resume',token:sessionToken}),1200);};
     socket.onerror = () => { status.textContent = 'Nie można połączyć się z serwerem gry.'; };
   }
   panel.querySelectorAll<HTMLButtonElement>('.mode-card[data-mode]').forEach(button=>button.onclick=()=>send({type:'create',mode:button.dataset.mode}));
-  if(!onlineConfigured){
-    status.textContent='Tryby online wymagają serwera gry. Możesz teraz zagrać lokalnie.';
+  if(hosted){
     panel.querySelectorAll<HTMLButtonElement>('.mode-card[data-mode]').forEach(button=>button.disabled=true);
     el('join-controls').hidden=true;
+    status.textContent='Sprawdzam serwer 1v1…';
+    fetch('/api/room',{cache:'no-store'}).then(response=>response.json()).then(data=>{
+      if(!data.online)throw new Error('Serwer 1v1 nie jest jeszcze gotowy. Gra lokalna jest dostępna.');
+      onlineConfigured=true;
+      el<HTMLButtonElement>('join-room').disabled=false;
+      el('join-controls').hidden=false;
+      el('mode-options').hidden=false;
+      panel.querySelector<HTMLButtonElement>('.mode-card[data-mode="1v1"]')!.disabled=false;
+      status.textContent='Graj 1v1 online: utwórz pokój albo wpisz kod zaproszenia.';
+      if(sessionToken && sessionCode)send({type:'resume',token:sessionToken});
+    }).catch(()=>{status.textContent='Serwer 1v1 nie jest jeszcze gotowy. Gra lokalna jest dostępna.';});
   }
   el('local-mode').onclick=()=>{panel.hidden=true;onLocalMode();};
   el('join-room').onclick = () => send({type:'join',code:code.value.trim().toUpperCase()});
@@ -157,7 +198,7 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
   };
   el('rematch').onclick = () => send({type:'rematch'});
   angleInput.oninput=()=>{if(canAim)setAngleDegrees(Number(angleInput.value));};
-  if(sessionToken && onlineConfigured)send({type:'resume',token:sessionToken});
+  if(sessionToken && !hosted)send({type:'resume',token:sessionToken});
   return { showMenu(){panel.hidden=false;el('mode-options').hidden=false;el('join-controls').hidden=!onlineConfigured;el('room-actions').hidden=true;}, leave(){leaving=true;send({type:'leave'});}, setAngle(angle: number) {
     if (!canAim) return;
     setAngleDegrees(angle*180/Math.PI);
