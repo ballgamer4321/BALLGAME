@@ -10,6 +10,11 @@ interface DatabaseRoom {
   expiresAt: number;
 }
 
+interface RoomReference {
+  transaction(update: (current: unknown) => DatabaseRoom | null | undefined,
+    onComplete?: undefined, applyLocally?: boolean): Promise<{ committed: boolean }>;
+}
+
 function configured() {
   return Boolean(process.env.FIREBASE_DATABASE_URL &&
     (process.env.FIREBASE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_APPLICATION_CREDENTIALS));
@@ -29,7 +34,7 @@ function database() {
   return getDatabase(app);
 }
 
-const roomRef = (code: string) => database().ref(`orbita/rooms/${code}`);
+const roomRef = (code: string) => (database() as unknown as { ref(path: string): RoomReference }).ref(`orbita/rooms/${code}`);
 const record = (match: StoredMatch): DatabaseRoom => ({
   match: JSON.parse(JSON.stringify(match)) as StoredMatch,
   expiresAt: Date.now() + ROOM_TTL_MS,
