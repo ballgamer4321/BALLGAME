@@ -14,6 +14,8 @@ export class Arena {
   private observer: ResizeObserver;
   private aimArrow: THREE.ArrowHelper;
   private projectiles: THREE.Mesh[] = [];
+  private lowEffects = false;
+  private reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
   constructor(private container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -108,6 +110,14 @@ export class Arena {
     this.camera.updateProjectionMatrix();
   }
 
+  setLowEffects(low: boolean) {
+    this.lowEffects = low;
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, low ? 1 : 1.75));
+    this.renderer.shadowMap.enabled = !low;
+    this.resize();
+    if (low) this.trails.forEach(trail => trail.slice(4).forEach(particle => { particle.visible = false; }));
+  }
+
   reset(w: World) {
     this.previous = w.balls.map(b => ({ x: b.x, y: b.y }));
     this.trails.flat().forEach(t => { t.visible = false; });
@@ -161,6 +171,7 @@ export class Arena {
   beforeStep(w: World) { this.previous = w.balls.map(b => ({ x: b.x, y: b.y })); }
 
   private showDamageBubble(x: number, y: number, amount: number) {
+    if (this.damageBubbles.length >= (this.lowEffects ? 6 : 14)) return;
     const canvas = document.createElement('canvas');
     canvas.width = 256; canvas.height = 128;
     const context = canvas.getContext('2d')!;
@@ -178,14 +189,15 @@ export class Arena {
     const sprite = new THREE.Sprite(material);
     sprite.position.set(x, 2.35, y); sprite.scale.set(2.5, 1.25, 1); sprite.renderOrder = 10;
     this.scene.add(sprite);
-    this.damageBubbles.push({ sprite, life: 0.9, rise: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0.15 : 1.1 });
+    this.damageBubbles.push({ sprite, life: 0.9, rise: this.reducedMotion.matches ? 0 : 1.1 });
   }
 
   afterStep(w: World) {
-    for (const event of w.events.filter(e => e.type === 'damage' && e.amount))
+    for (const event of w.events.filter(e => e.type === 'damage' && e.amount).slice(0, this.lowEffects ? 2 : 5))
       this.showDamageBubble(event.x, event.y, event.amount!);
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    for (const event of w.events.filter(e => e.type === 'hit' || e.type === 'power' || e.type === 'beam' || e.type === 'shot')) {
+    if (this.reducedMotion.matches) return;
+    for (const event of w.events.filter(e => e.type === 'hit' || e.type === 'power' || e.type === 'beam' || e.type === 'shot').slice(0, this.lowEffects ? 2 : 5)) {
+      if (this.flashes.length >= (this.lowEffects ? 5 : 12)) break;
       const radius = event.radius ?? (event.type === 'hit' ? 0.7 : 1.1);
       const geometry = event.type === 'beam'
         ? new THREE.BoxGeometry(event.axis === 'x' ? 19 : 0.12, 0.04, event.axis === 'y' ? 19 : 0.12)
@@ -209,18 +221,19 @@ export class Arena {
       aura.material.color.set(b.shield > 0 ? '#b8c9db' : b.poisonedUntil > w.tick ? '#76dd9a' : b.slowedUntil > w.tick ? '#82e9f4' : '#ff9dd5');
       const satellite = group.children[4] as THREE.Mesh;
       satellite.visible = b.echoUntil > w.tick;
-      if (satellite.visible) satellite.position.set(Math.cos(w.tick * 0.18) * b.radius * 1.5, 0.2, Math.sin(w.tick * 0.18) * b.radius * 1.5);
-      if (moving) {
+      if (satellite.visible && !this.reducedMotion.matches) satellite.position.set(Math.cos(w.tick * 0.18) * b.radius * 1.5, 0.2, Math.sin(w.tick * 0.18) * b.radius * 1.5);
+      if (moving && !this.reducedMotion.matches) {
         group.rotation.x += b.vy * delta * 0.7;
         group.rotation.z -= b.vx * delta * 0.7;
       }
       const trail = this.trails[i];
-      if (moving && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        for (let j = trail.length - 1; j > 0; j--) {
+      if (moving && !this.reducedMotion.matches) {
+        const count = this.lowEffects ? 4 : trail.length;
+        for (let j = count - 1; j > 0; j--) {
           trail[j].position.copy(trail[j - 1].position); trail[j].visible = trail[j - 1].visible;
         }
         trail[0].position.set(x, 0.14, y); trail[0].visible = b.hp > 0;
-      }
+      } else trail.forEach(particle => { particle.visible = false; });
     });
     this.balls.forEach((group,i)=>{group.visible=i<w.balls.length;this.trails[i].forEach(p=>{if(i>=w.balls.length)p.visible=false;});});
     this.flashes = this.flashes.filter(f => {

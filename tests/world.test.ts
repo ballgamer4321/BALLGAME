@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RULES } from '../src/shared/config';
+import { BASIC_BALLS, RULES } from '../src/shared/config';
 import { createWorld, stepWorld, type World } from '../src/simulation/world';
 
 function runToEnd(world: World) {
@@ -13,8 +13,8 @@ describe('local duel simulation', () => {
     const world = createWorld(7, undefined, [Math.PI / 2, Math.PI]);
     const [a, b] = world.balls;
     expect(a.vx).toBeCloseTo(0);
-    expect(a.vy).toBeCloseTo(7.5);
-    expect(b.vx).toBeCloseTo(-7.5);
+    expect(a.vy).toBeCloseTo(BASIC_BALLS[0].speed);
+    expect(b.vx).toBeCloseTo(-BASIC_BALLS[1].speed);
     a.y = RULES.height / 2 - a.radius - 0.01;
     a.vx = 0; a.vy = 8;
     b.x = 6; b.y = -6; b.vx = b.vy = 0;
@@ -59,6 +59,18 @@ describe('local duel simulation', () => {
     expect(a.x).toBeLessThan(b.x);
     expect(a.vx).toBeLessThan(0);
     expect(b.vx).toBeGreaterThan(0);
+  });
+
+  it('keeps each ball moving at its own speed after an angled collision', () => {
+    const world = createWorld(2);
+    const [a, b] = world.balls;
+    a.x = -1.25; a.y = -0.2; a.vx = 12; a.vy = 3;
+    b.x = 1.25; b.y = 0.2; b.vx = -7; b.vy = -1;
+    const speedA = Math.hypot(a.vx, a.vy), speedB = Math.hypot(b.vx, b.vy);
+    stepWorld(world);
+    expect(world.hits).toBe(1);
+    expect(Math.hypot(a.vx, a.vy)).toBeCloseTo(speedA, 8);
+    expect(Math.hypot(b.vx, b.vy)).toBeCloseTo(speedB, 8);
   });
 
   it('keeps teammates unharmed on contact in 2v2', () => {

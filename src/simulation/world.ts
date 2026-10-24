@@ -105,9 +105,12 @@ function resolvePair(w: World, a: Ball, b: Ball) {
   }
   const relative = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
   if (relative < 0) {
-    // Equal mass, elastic impulse; no energy injection from a speed reset.
-    a.vx += relative * nx; a.vy += relative * ny;
-    b.vx -= relative * nx; b.vy -= relative * ny;
+    // Arcade rebound: reflect each velocity across the contact normal.
+    // This separates the balls without draining speed from either one.
+    const aNormal = a.vx * nx + a.vy * ny;
+    const bNormal = b.vx * nx + b.vy * ny;
+    a.vx -= 2 * aNormal * nx; a.vy -= 2 * aNormal * ny;
+    b.vx -= 2 * bNormal * nx; b.vy -= 2 * bNormal * ny;
   }
   const key = pairKey(a, b);
   if (!w.contacts.has(key)) {

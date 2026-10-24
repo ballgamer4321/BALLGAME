@@ -2,7 +2,7 @@
 
 Data ustaleń: 2026-10-21. Nazwa robocza autorskiej gry przeglądarkowej.
 
-Aktualizacja implementacji 2026-10-23: na życzenie użytkownika arena jest kwadratem 20 × 20, kulki mają promienie 0,85–0,9 i wyższe prędkości. Etap 5 dodał osiem autorskich mocy opisanych w `src/shared/config.ts`; nazwy i parametry w poniższym pierwotnym planie nie są już bieżącym balansem. Aby walka była dynamiczniejsza, własny limit rundy wynosi 45 s, dogrywka zaczyna się po 30 s. Bieżące liczby definiuje kod i README.
+Aktualizacja implementacji 2026-10-24: na życzenie użytkownika arena jest kwadratem 20 × 20, kulki mają promienie 1,15–1,22 i wyższe prędkości. Ostatnia poprawka podniosła bazowe szybkości o około 10–12% i zachowuje prędkość każdej kulki po zderzeniu (poza działaniem mocy). Etap 5 dodał osiem autorskich mocy opisanych w `src/shared/config.ts`; nazwy i parametry w poniższym pierwotnym planie nie są już bieżącym balansem. Aby walka była dynamiczniejsza, własny limit rundy wynosi 45 s, dogrywka zaczyna się po 30 s. Wybór kulki i kierunku czeka na decyzje graczy, bez automatycznego wyboru po czasie. Bieżące liczby definiuje kod i README.
 
 ## Zakres i sposób pracy
 
@@ -41,10 +41,10 @@ Nie grano w Roblox i nie obejrzano nagrań. Dwa znalezione adresy YouTube nie zo
 ## Własne zasady — nie są danymi z Roblox
 
 - Mecz do 3 wygranych rund, konfigurowalne `winsToMatch`. W 2v2 punkt otrzymuje drużyna po eliminacji obu przeciwników. Brak obrażeń sojuszniczych; sojusznicy fizycznie się odbijają.
-- Wybór 15 s, celowanie 10 s, odliczanie 3 s, prezentacja wyniku 5 s. Po timeout wybór pierwszej oferty i kierunek ku środkowi. Brak wejść sterujących w fazie walki.
+- Wybór kulki i kierunku bez limitu czasu; walka rusza po zatwierdzeniu wszystkich graczy. Prezentacja wyniku rundy 5 s. Brak wejść sterujących w fazie walki.
 - Każdy gracz dostaje trzy różne definicje z dostępnej puli. Testowo wszystkie osiem dostępne. Wybór z kolekcji zużywany dopiero po zatwierdzeniu przez serwer.
 - Walka najwyżej 60 s: od 45 s nieuniknione obrażenia narastające, przy 60 s porównanie średniego pozostałego HP/maxHP drużyn (polegli liczeni jako zero). Równość lub równoczesna eliminacja oznacza remis bez punktu. Limit 9 rund; potem wynik z punktów lub remis meczu, aby seria remisów nie trwała wiecznie.
-- Arena płaska 20 × 14 jednostek; początkowo promień 0,6, 100 HP, szybkość 6 jednostek/s, kontakt zadaje 10 obrażeń obu stronom. Parametry do strojenia. Brak grawitacji w symulacji, 3D wyłącznie prezentacyjne.
+- Arena płaska 20 × 20 jednostek; obecne promienie, HP i szybkości są w `src/shared/config.ts`. Brak grawitacji w symulacji, 3D wyłącznie prezentacyjne.
 - Rozłączenie: automatyczne decyzje i dalsza walka, 30 s na powrót z tokenem sesji; potem walkower w 1v1, eliminacja nieobecnego w 2v2. Jawne wyjście porzuca slot. Nie podstawiać ukrytego bota. Pusty pokój usuwać po okresie powrotu; bezczynne lobby po 10 min.
 - Rewanż wymaga zgody wszystkich obecnych; nowy seed, punkty i limit kolekcji. Bot dostępny tylko w wyraźnie opisanym treningu i podejmuje takie same legalne decyzje.
 

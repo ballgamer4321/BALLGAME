@@ -3,6 +3,7 @@ import { Arena } from './arena';
 import { BASIC_BALLS, MATCH_BALLS, RULES } from '../shared/config';
 import { createWorld, stepWorld } from '../simulation/world';
 import { connectRooms } from './network';
+import { GameAudio } from './audio';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
@@ -21,11 +22,11 @@ app.innerHTML = `
         <div class="viewport">
           <div class="arena-label"><span class="live-dot"></span><span id="phase-label">GOTOWOŚĆ</span><span class="arena-number">ARENA 01</span></div>
           <div id="scene"></div>
-          <div id="home-overlay" class="home-overlay"><div class="home-shell"><div class="home-heading"><span class="eyebrow">ORBITA / STARCIE</span><h1 id="home-title">Wybierz tryb gry<span>.</span></h1><p id="home-subtitle">Wybierz kulkę, ustaw kierunek i patrz, jak walczy.</p></div><div class="home-content"><section id="local-panel" class="local-panel" hidden><button id="local-back" class="back-button" type="button">← Wróć do trybów</button><span class="eyebrow">TRENING LOKALNY</span><h2>Przygotuj pojedynek</h2><span id="status" class="status">Gotowe</span><p id="hint" class="hint">Wybierz kulki i kierunek startowy.</p><div id="local-aim" class="aim-picker"><div class="local-choice-pair"><div><label for="local-ball">Twoja kulka</label><select id="local-ball">${MATCH_BALLS.map(b => `<option value="${b.id}">${b.name} · ${b.ability}</option>`).join('')}</select></div><div><label for="rival-ball">Rywal</label><select id="rival-ball">${MATCH_BALLS.map(b => `<option value="${b.id}" ${b.id === 'jade' ? 'selected' : ''}>${b.name} · ${b.ability}</option>`).join('')}</select></div></div><label for="local-angle">Kierunek twojej kulki <output id="local-angle-value">0°</output></label><input id="local-angle" type="range" min="-180" max="180" value="0"><p>Walka zacznie się po kliknięciu przycisku. Podczas walki kulki poruszają się same.</p></div><button id="start" class="primary">Rozpocznij pojedynek <span>↗</span></button></section></div></div></div>
+          <div id="home-overlay" class="home-overlay"><div class="home-shell"><div class="home-heading"><span class="eyebrow">ORBITA / STARCIE</span><h1 id="home-title">Wybierz tryb gry<span>.</span></h1><p id="home-subtitle">Wybierz kulkę, ustaw kierunek i patrz, jak walczy.</p></div><div class="home-content"><section id="local-panel" class="local-panel" data-side="local" hidden><button id="local-back" class="back-button" type="button">← Wróć do trybów</button><span class="eyebrow">TRENING LOKALNY</span><h2>Przygotuj pojedynek</h2><span id="status" class="status">Gotowe</span><p id="hint" class="hint">Wybierz kulki i kierunek startowy.</p><div id="local-aim" class="aim-picker"><div class="local-side-tabs" role="group" aria-label="Wybierz stronę"><button type="button" data-side="local" aria-pressed="true">Twoja kulka</button><button type="button" data-side="rival" aria-pressed="false">Rywal</button></div><div class="local-choice-pair"><div><label for="local-ball">Twoja kulka</label><select id="local-ball">${MATCH_BALLS.map(b => `<option value="${b.id}">${b.name} · ${b.ability}</option>`).join('')}</select></div><div><label for="rival-ball">Rywal</label><select id="rival-ball">${MATCH_BALLS.map(b => `<option value="${b.id}" ${b.id === 'jade' ? 'selected' : ''}>${b.name} · ${b.ability}</option>`).join('')}</select></div></div><label for="local-angle">Kierunek twojej kulki <output id="local-angle-value">0°</output></label><input id="local-angle" type="range" min="-180" max="180" value="0"><p>Walka zacznie się po kliknięciu przycisku. Podczas walki kulki poruszają się same.</p></div><button id="start" class="primary">Rozpocznij pojedynek <span>↗</span></button></section></div></div></div>
           <div class="floor-label">ORBITA <span> / </span> COLLISION LAB</div>
           <div id="result" class="result" hidden role="status"><span class="eyebrow">POJEDYNEK ZAKOŃCZONY</span><h2 id="result-title"></h2><p id="result-detail"></p><button id="replay" class="primary">Przygotuj kolejny pojedynek <span>↗</span></button></div>
         </div>
-        <div class="arena-footer"><span><i></i> KWADRATOWA ARENA <b>20 × 20</b></span><span>ZDERZENIA <b id="hits">0</b></span><span>UKŁAD <b id="seed">#0001</b></span><div class="secondary-controls"><button id="pause" disabled>Ⅱ Pauza</button><button id="speed" aria-label="Zmień szybkość podglądu">Tempo 1×</button></div></div>
+        <div class="arena-footer"><span><i></i> KWADRATOWA ARENA <b>20 × 20</b></span><span>ZDERZENIA <b id="hits">0</b></span><span>UKŁAD <b id="seed">#0001</b></span><div class="secondary-controls"><button id="pause" disabled>Ⅱ Pauza</button><button id="speed" aria-label="Zmień szybkość podglądu">Tempo 1×</button><button id="sound" type="button" aria-label="Wycisz dźwięk">♪ Dźwięk</button><button id="effects" type="button" aria-label="Przełącz jakość efektów">✦ Efekty</button></div></div>
       </section>
     </div>
   </main>`;
@@ -40,9 +41,12 @@ let localAngle = 0;
 let onlineAim: { setAngle: (angle: number) => void; canAim: () => boolean; showMenu: () => void; leave: () => void } | undefined;
 let snapshotTime = 0;
 let lastNetworkPhase = '';
+const audio = new GameAudio();
+let lowEffects = localStorage.getItem('orbita-effects') === 'low' || (localStorage.getItem('orbita-effects') !== 'high' && (matchMedia('(pointer: coarse)').matches || innerWidth <= 620));
 let arena: Arena;
 try {
   arena = new Arena(get('scene'));
+  arena.setLowEffects(lowEffects);
   arena.reset(world);
   arena.setAimPreview(world, 0, localAngle);
 } catch (error) {
@@ -50,6 +54,26 @@ try {
   get<HTMLButtonElement>('start').disabled = true;
   throw error;
 }
+const soundButton = get<HTMLButtonElement>('sound');
+const effectsButton = get<HTMLButtonElement>('effects');
+function updateOptions() {
+  soundButton.textContent = audio.enabled ? '♪ Dźwięk' : '♪ Cisza';
+  soundButton.setAttribute('aria-pressed', String(audio.enabled));
+  soundButton.setAttribute('aria-label', audio.enabled ? 'Wycisz dźwięk' : 'Włącz dźwięk');
+  effectsButton.textContent = lowEffects ? '✦ Lekkie' : '✦ Pełne';
+  effectsButton.setAttribute('aria-pressed', String(!lowEffects));
+  effectsButton.setAttribute('aria-label', lowEffects ? 'Włącz pełne efekty' : 'Włącz lekkie efekty');
+}
+updateOptions();
+document.addEventListener('pointerdown', () => audio.unlock(), { once: true });
+document.addEventListener('keydown', () => audio.unlock(), { once: true });
+soundButton.addEventListener('click', () => { audio.toggle(); updateOptions(); });
+effectsButton.addEventListener('click', () => {
+  lowEffects = !lowEffects;
+  localStorage.setItem('orbita-effects', lowEffects ? 'low' : 'high');
+  arena.setLowEffects(lowEffects);
+  updateOptions();
+});
 
 function updateHud() {
   world.balls.forEach((b, i) => {
@@ -86,11 +110,16 @@ for(const id of ['local-ball','rival-ball'] as const){
 }
 function syncCards(){for(const id of ['local-ball','rival-ball']){const select=get<HTMLSelectElement>(id);select.parentElement!.querySelectorAll<HTMLButtonElement>(`.ball-card-grid[aria-label="${id==='local-ball'?'Wybierz swoją kulkę':'Wybierz kulkę rywala'}"] .ball-card`).forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.ball===select.value)));}}
 syncCards();
+document.querySelectorAll<HTMLButtonElement>('.local-side-tabs button').forEach(button => button.addEventListener('click', () => {
+  get('local-panel').dataset.side = button.dataset.side;
+  document.querySelectorAll<HTMLButtonElement>('.local-side-tabs button').forEach(tab => tab.setAttribute('aria-pressed', String(tab === button)));
+}));
 
 function start() {
   if (online) return;
   world = createWorld(seed, localPicks, [localAngle, Math.PI]); accumulator = 0;
   arena.reset(world); running = true; paused = false;
+  audio.resetRound(); audio.play('start');
   arena.clearAimPreview();
   get('home-overlay').hidden = true;
   get('exit-match').hidden = false;
@@ -206,6 +235,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && run
 
 function finish() {
   running = false;
+  audio.play('result');
   get('result').hidden = false;
   const winningBall=world.balls.find(b=>b.id===world.winner);
   const winner = MATCH_BALLS.find(b => b.id === world.winner?.split(':').at(-1));
@@ -225,7 +255,7 @@ function frame(now: number) {
   if (running && !paused && !online) {
     accumulator += delta * speed;
     while (accumulator >= RULES.step && running) {
-      arena.beforeStep(world); stepWorld(world); arena.afterStep(world);
+      arena.beforeStep(world); stepWorld(world); arena.afterStep(world); audio.playEvents(world.events, world.tick);
       accumulator -= RULES.step;
       if (world.phase === 'finished') finish();
     }
@@ -240,6 +270,7 @@ function frame(now: number) {
 }
 requestAnimationFrame(frame);
 onlineAim = connectRooms(state => {
+  if (state.phase === 'fight' && lastNetworkPhase !== 'fight') { audio.resetRound(); audio.play('start'); }
   online = true;
   get('home-overlay').hidden = !['lobby','abandoned','match_result'].includes(state.phase);
   get('exit-match').hidden = !['select','aim','fight','round_result'].includes(state.phase);
@@ -282,6 +313,7 @@ onlineAim = connectRooms(state => {
   arena.beforeStep(world);
   world = { ...state.world, contacts: new Set(), collisionLimitHits: 0 };
   arena.afterStep(world);
+  audio.playEvents(world.events, world.tick);
   world.balls.forEach((ball,i) => {
     const def = MATCH_BALLS.find(b => b.id === ball.id.split(':').at(-1));
     const label = document.querySelectorAll<HTMLElement>('.fighter-heading > span:first-child')[i];

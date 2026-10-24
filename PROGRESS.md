@@ -1,6 +1,6 @@
 # Postęp — Orbita: Starcie
 
-Aktualizacja: 2026-10-23. Obowiązuje jeden etap na wiadomość użytkownika. Etap 6 zakończony; wykonano dodatkowe poprawki wyboru kulek i ekranu startowego na prośbę użytkownika. Etap 7 zacząć dopiero po nowym „kontynuuj”.
+Aktualizacja: 2026-10-24. Obowiązuje jeden etap na wiadomość użytkownika. Etap 7 rozpoczęty po „dawaj kolejny etap”; implementacja gotowa, kontrola wizualna i FPS przeglądarki oczekują na dostęp do lokalnej karty.
 
 | Etap | Status |
 | --- | --- |
@@ -10,7 +10,7 @@ Aktualizacja: 2026-10-23. Obowiązuje jeden etap na wiadomość użytkownika. Et
 | 4. Pełny przebieg meczu | DONE |
 | 5. Zdolności i balans | DONE |
 | 6. 2v2, boty i odporność sieci | DONE |
-| 7. Oprawa i telefony | TODO |
+| 7. Oprawa i telefony | IN PROGRESS — kod gotowy, QA przeglądarki zablokowane |
 | 8. Kolekcja i miejsca na reklamy | TODO |
 | 9. Testy końcowe i wdrożenie | TODO |
 
@@ -22,6 +22,12 @@ Poprawka ekranu: usunięto boczne panele. Pełna szerokość ekranu mieści menu
 
 Weryfikacja: 32/32 testy, tsc --noEmit i build Vite przeszły po zmianie ekranu i usunięciu automatycznego wyboru. Test sieciowy sprawdza cztery osobne klienty WebSocket, wybór i wspólny stan walki. Test serwera potwierdza, że po 20 s fazy wyboru i 20 s celowania mecz wciąż czeka na graczy. W przeglądarce obejrzano pełnoekranowe menu, lokalny wybór ośmiu kulek, lobby treningu z botem i wybór trzech propozycji; potwierdzenie uruchomiło walkę. W poprzedniej weryfikacji dwa niezależne okna potwierdziły wybór z kolekcji (8 kulek), oczekiwanie na rywala i wspólny start walki. Serwer WebSocket i Vite działają lokalnie pod http://127.0.0.1:5173/.
 
-Znane ograniczenia: brak trwałego zapisu kolekcji, dźwięków, pełnej oprawy mobilnej i publicznego hostingu — to kolejne etapy. Build zgłasza ostrzeżenie o paczce JS ok. 534 kB. Nie wykonano jeszcze pełnego testu produkcyjnej wersji na telefonie ani całego meczu 2v2 do rewanżu. Katalog nie jest repozytorium Git.
+Znane ograniczenia: brak trwałego zapisu kolekcji i hostingu serwera WebSocket — to kolejne etapy. Build zgłasza ostrzeżenie o paczce JS ok. 539 kB. Nie wykonano jeszcze testu produkcyjnej wersji na telefonie ani całego meczu 2v2 do rewanżu.
 
-Następny krok po nowym „kontynuuj”: rozpocząć etap 7 od przeglądu oprawy na komputerze i małym ekranie, następnie animacje/dźwięki, dotyk, wyciszenie oraz ograniczenie efektów; sprawdzić wydajność i czytelność.
+Etap 7 — wykonane: dźwięki proceduralne Web Audio po interakcji, wyciszenie zapamiętywane lokalnie, tryb lekkich efektów z niższym DPR i bez cieni, ograniczenie śladów i efektów trafień, respektowanie reduced motion. Mobilny układ ma przyciski wyboru strony w grze lokalnej, duży suwak kierunku i cele dotykowe minimum 44 px; dodano reguły 360 px oraz landscape. Przycisk „Zmień tryb” pozwala wyjść z aktywnej walki. Pomiar czystej symulacji na dostępnym komputerze: 48 walk 2v2, 98 545 ticków w 428,6 ms, średnio 0,0043 ms/tick. To nie jest pomiar FPS ani WebGL.
+
+Weryfikacja etapu 7: 32/32 testy, tsc --noEmit i build Vite przeszły; serwery słuchają na 5173 i 3001. Próba otwarcia lokalnej karty w narzędziu przeglądarki została odrzucona przez jego politykę dostępu. Nie wykonano wizualnej kontroli 360×800 ani landscape ani pomiaru FPS. Nie używać obejścia; etap 7 zamknąć dopiero po dostępnej kontroli przeglądarkowej lub ręcznej weryfikacji użytkownika. Etap 8 pozostaje TODO.
+
+Poprawka tempa i publikacja na prośbę użytkownika: odbicie dwóch kulek zachowuje moduł prędkości każdej z nich, a parametry bazowe podniesiono o około 10–12%. Test ukośnego zderzenia sprawdza oba moduły; 33/33 testy, kontrola typów i build Vite przeszły. Projekt powiązano z istniejącym repozytorium `ballgamer4321/BALLGAME` na bazie `origin/main`; stare repo zawierało poprzednią wersję i zbudowany `dist`, który usunięto ze śledzonych plików. Konfiguracja `vercel.json` buduje frontend; aktualny serwer multiplayer wymaga osobnego trwałego hostingu WebSocket i ustawienia `VITE_WS_URL`. W produkcyjnym buildzie bez tego ustawienia przyciski sieciowe są wyłączone. Nie deklarować działania trybów sieciowych bez weryfikacji.
+
+Wdrożenie klienta: Vercel CLI zalogowane i powiązane z `ballsteam/ball_game` (`prj_cnP9Kl2VY78Ow7aw7n87ra511dn1`), repo GitHub podpięte jako `ballgamer4321/BALLGAME`, gałąź produkcyjna `main`. Ręczny deploy produkcyjny `dpl_Bjyjfg7U8CkAum1wXFDP85EWFFmy` ma stan READY i alias `https://ballgame-tawny.vercel.app/`. Uwierzytelnione `vercel curl` potwierdziło HTTP 200 dla strony i JS; `/ws` ma 404. Na prośbę użytkownika ochronę Vercel Authentication ograniczono do wdrożeń podglądowych; publiczną produkcję otwarto w przeglądarce i uruchomiono lokalną walkę.

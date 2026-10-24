@@ -15,6 +15,7 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
   const code = el<HTMLInputElement>('room-code');
   code.value = new URLSearchParams(location.search).get('room')?.toUpperCase().slice(0,6) || '';
   let socket: WebSocket | undefined;
+  const onlineConfigured=!import.meta.env.PROD || !!import.meta.env.VITE_WS_URL?.trim();
   let previousPhase='';
   let currentSlot = 0;
   let canAim = false;
@@ -83,7 +84,8 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     if (socket?.readyState === WebSocket.OPEN) { socket.send(JSON.stringify(action)); return; }
     if (socket?.readyState === WebSocket.CONNECTING) return;
     status.textContent = 'Łączenie…';
-    socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`);
+    const endpoint=import.meta.env.VITE_WS_URL?.trim() || `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`;
+    socket = new WebSocket(endpoint);
     socket.onopen = () => socket!.send(JSON.stringify(action));
     socket.onmessage = event => {
       const data = JSON.parse(event.data);
@@ -128,9 +130,14 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
       previousPhase=data.phase;
     };
     socket.onclose = () => {status.textContent = 'Połączenie przerwane. Próbuję wrócić do pokoju…';el<HTMLButtonElement>('ready-room').disabled=true;if(!leaving && sessionToken)setTimeout(()=>send({type:'resume',token:sessionToken}),1200);};
-    socket.onerror = () => { status.textContent = 'Nie można połączyć się z serwerem. Uruchom serwer portu 3001.'; };
+    socket.onerror = () => { status.textContent = 'Nie można połączyć się z serwerem gry.'; };
   }
   panel.querySelectorAll<HTMLButtonElement>('.mode-card[data-mode]').forEach(button=>button.onclick=()=>send({type:'create',mode:button.dataset.mode}));
+  if(!onlineConfigured){
+    status.textContent='Tryby online wymagają serwera gry. Możesz teraz zagrać lokalnie.';
+    panel.querySelectorAll<HTMLButtonElement>('.mode-card[data-mode]').forEach(button=>button.disabled=true);
+    el('join-controls').hidden=true;
+  }
   el('local-mode').onclick=()=>{panel.hidden=true;onLocalMode();};
   el('join-room').onclick = () => send({type:'join',code:code.value.trim().toUpperCase()});
   el('ready-room').onclick = () => send({type:'ready'});
@@ -150,8 +157,8 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
   };
   el('rematch').onclick = () => send({type:'rematch'});
   angleInput.oninput=()=>{if(canAim)setAngleDegrees(Number(angleInput.value));};
-  if(sessionToken)send({type:'resume',token:sessionToken});
-  return { showMenu(){panel.hidden=false;el('mode-options').hidden=false;el('join-controls').hidden=false;el('room-actions').hidden=true;}, leave(){leaving=true;send({type:'leave'});}, setAngle(angle: number) {
+  if(sessionToken && onlineConfigured)send({type:'resume',token:sessionToken});
+  return { showMenu(){panel.hidden=false;el('mode-options').hidden=false;el('join-controls').hidden=!onlineConfigured;el('room-actions').hidden=true;}, leave(){leaving=true;send({type:'leave'});}, setAngle(angle: number) {
     if (!canAim) return;
     setAngleDegrees(angle*180/Math.PI);
   }, canAim: () => canAim };
