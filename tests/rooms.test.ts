@@ -1,5 +1,27 @@
 import { expect, it } from 'vitest';
-import { Rooms } from '../src/server/rooms';
+import { Rooms, serializeRoom, type StoredRoom } from '../src/server/rooms';
+
+it('restores room and battle fields omitted by Realtime Database when empty', () => {
+  const rooms = new Rooms();
+  const room = rooms.create('a', 'FIRE42');
+  const stored = serializeRoom(room) as Partial<StoredRoom>;
+  delete stored.ready; delete stored.disconnected; delete stored.forfeited;
+  delete stored.collectionUsed; delete stored.rematch;
+  delete stored.offers; delete stored.picks; delete stored.angles;
+  const restored = new Rooms();
+  restored.importRoom(stored as StoredRoom);
+  restored.join('b', 'FIRE42');
+  restored.setReady('a', 42); restored.setReady('b', 42);
+  restored.select('a', restored.snapshot('a').offer[0], false, 0);
+  restored.select('b', restored.snapshot('b').offer[0], false, Math.PI);
+  const battle = serializeRoom(restored.forPlayer('a')) as StoredRoom;
+  delete (battle.world as Partial<NonNullable<StoredRoom['world']>>).events;
+  delete (battle.world as Partial<NonNullable<StoredRoom['world']>>).projectiles;
+  delete (battle.world as Partial<NonNullable<StoredRoom['world']>>).contacts;
+  const resumed = new Rooms();
+  resumed.importRoom(battle);
+  expect(() => resumed.tick()).not.toThrow();
+});
 
 it('starts only when both players are ready and exposes the same battle result', () => {
   const rooms = new Rooms();

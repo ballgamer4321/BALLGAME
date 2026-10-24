@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import { Rooms, serializeRoom, type StoredRoom } from './rooms';
+import { Rooms, serializeRoom, type StoredRoom } from './rooms.js';
 
 export interface StoredMatch {
   room: StoredRoom;

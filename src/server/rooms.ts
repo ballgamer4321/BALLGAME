@@ -1,6 +1,6 @@
-import { MATCH_BALLS } from '../shared/config';
-import { seededRandom } from '../shared/random';
-import { createWorld, stepWorld, type World } from '../simulation/world';
+import { MATCH_BALLS } from '../shared/config.js';
+import { seededRandom } from '../shared/random.js';
+import { createWorld, stepWorld, type World } from '../simulation/world.js';
 
 type Phase = 'lobby' | 'select' | 'aim' | 'fight' | 'round_result' | 'match_result' | 'abandoned';
 export type RoomMode = '1v1' | '2v2' | 'bot';
@@ -24,9 +24,12 @@ export function serializeRoom(room: Room): StoredRoom {
 }
 
 export function deserializeRoom(data: StoredRoom): Room {
-  return { ...data, ready: new Set(data.ready), disconnected: new Map(data.disconnected),
-    forfeited: new Set(data.forfeited), collectionUsed: new Set(data.collectionUsed), rematch: new Set(data.rematch),
-    world: data.world ? { ...data.world, contacts: new Set(data.world.contacts) } : null };
+  // Realtime Database omits empty arrays and objects when it stores a room.
+  return { ...data, ready: new Set(data.ready ?? []), disconnected: new Map(data.disconnected ?? []),
+    forfeited: new Set(data.forfeited ?? []), collectionUsed: new Set(data.collectionUsed ?? []), rematch: new Set(data.rematch ?? []),
+    offers: data.offers ?? {}, picks: data.picks ?? {}, angles: data.angles ?? {},
+    world: data.world ? { ...data.world, events: data.world.events ?? [], projectiles: data.world.projectiles ?? [],
+      contacts: new Set(data.world.contacts ?? []) } : null };
 }
 export class Rooms {
   readonly rooms = new Map<string, Room>();

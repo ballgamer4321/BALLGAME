@@ -1,10 +1,11 @@
 import { POST } from '../api/room';
+import { deleteApp, getApps } from 'firebase-admin/app';
 
 type Reply = { type: string; code?: string; token?: string; phase?: string; slot?: number; offer?: string[]; world?: { tick: number } | null; message?: string };
 
 async function action(payload: Record<string, unknown>): Promise<Reply> {
-  const request = new Request('http://localhost/api/room', { method: 'POST', body: JSON.stringify(payload) });
-  const response = await POST(request);
+  const request = new Request(process.env.ORBITA_SMOKE_URL || 'http://localhost/api/room', { method: 'POST', body: JSON.stringify(payload) });
+  const response = process.env.ORBITA_SMOKE_URL ? await fetch(request) : await POST(request);
   const result = await response.json() as Reply;
   if (!response.ok) throw new Error(`HTTP ${response.status}: ${result.message}`);
   return result;
@@ -29,4 +30,6 @@ try {
 } finally {
   if (host?.code && host?.token) await action({ type: 'leave', code: host.code, token: host.token }).catch(() => {});
   if (host?.code && guest?.token) await action({ type: 'leave', code: host.code, token: guest.token }).catch(() => {});
+  const app = getApps().find(candidate => candidate.name === 'orbita-hosted');
+  if (app) await deleteApp(app);
 }

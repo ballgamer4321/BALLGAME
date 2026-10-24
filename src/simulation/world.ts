@@ -1,5 +1,5 @@
-import { BASIC_BALLS, MATCH_BALLS, RULES } from '../shared/config';
-import { seededRandom } from '../shared/random';
+import { BASIC_BALLS, MATCH_BALLS, RULES } from '../shared/config.js';
+import { seededRandom } from '../shared/random.js';
 
 export interface Ball {
   id: string; x: number; y: number; vx: number; vy: number;

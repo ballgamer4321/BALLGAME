@@ -11,7 +11,7 @@
     "bench:simulation": "tsx scripts/bench.ts"
   },
   "dependencies": {
-    "@upstash/redis": "^1.39.0",
+    "firebase-admin": "^14.5.0",
     "three": "0.180.0",
     "ws": "8.18.3"
   },
