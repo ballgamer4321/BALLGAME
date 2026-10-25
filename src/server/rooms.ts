@@ -68,7 +68,14 @@ export function deserializeRoom(data: StoredRoom): Room {
       diceNextDropAt: ball.diceNextDropAt ?? data.world!.tick + 120, iceNextBombAt: ball.iceNextBombAt ?? 0,
       reforgeActive: ball.reforgeActive ?? false, reforgeDamage: ball.reforgeDamage ?? 3,
       reforgeAngle: ball.reforgeAngle ?? 0, reforgeTouching: ball.reforgeTouching ?? false,
-      reforgeNextHitAt: ball.reforgeNextHitAt ?? Array(data.world!.balls.length).fill(0) })),
+      reforgeNextHitAt: ball.reforgeNextHitAt ?? Array(data.world!.balls.length).fill(0),
+      rangeLevel: ball.rangeLevel ?? 0, rangeNextGrowAt: ball.rangeNextGrowAt ?? data.world!.tick + 240,
+      fibonacciStep: ball.fibonacciStep ?? 0, fibonacciLastHitAt: ball.fibonacciLastHitAt ?? 0,
+      verityLevel: ball.verityLevel ?? 0, verityDamageProgress: ball.verityDamageProgress ?? 0,
+      mirrorUntil: ball.mirrorUntil ?? 0, mirrorCharges: ball.mirrorCharges ?? 0, parryUntil: ball.parryUntil ?? 0, parryCharges: ball.parryCharges ?? 0,
+      harpoonTargetId: ball.harpoonTargetId ?? null, spearNextThrustAt: ball.spearNextThrustAt ?? data.world!.tick + 42,
+      spearPowerAt: ball.spearPowerAt ?? data.world!.tick + 240, magnetTargetId: ball.magnetTargetId ?? null, magnetReleaseAt: ball.magnetReleaseAt ?? 0,
+      motionHistory: ball.motionHistory ?? [{ x: ball.x, y: ball.y }] })),
     events: data.world.events ?? [], projectiles: data.world.projectiles ?? [],
     lasers: (data.world.lasers ?? []).map(laser => ({ ...laser,
       start: laser.start ?? -(laser.axis === 'x' ? RULES.width : RULES.height) / 2,
@@ -76,7 +83,7 @@ export function deserializeRoom(data: StoredRoom): Room {
       warningUntil: laser.warningUntil ?? data.world!.tick, nextHitAt: laser.nextHitAt ?? {} })),
     webs: (data.world.webs ?? []).map(web => ({ ...web, createdAt: web.createdAt ?? 0, hitSlots: web.hitSlots ?? [], nextDamageAt: web.nextDamageAt ?? {} })),
     spikes: data.world.spikes ?? [], diceTraps: data.world.diceTraps ?? [], iceBombs: data.world.iceBombs ?? [],
-    cannonTurrets: data.world.cannonTurrets ?? [],
+    cannonTurrets: data.world.cannonTurrets ?? [], portals: data.world.portals ?? [], echoes: data.world.echoes ?? [],
     hookTethers: data.world.hookTethers ?? [], damageZones: data.world.damageZones ?? [], apples: data.world.apples ?? [],
     nextHazardId: data.world.nextHazardId ?? 1,
     shardHitCounts: data.world.shardHitCounts ?? {}, nextShardBurstId: data.world.nextShardBurstId ?? 1,
@@ -231,6 +238,6 @@ export class Rooms {
     return {code:room.code,matchId:room.matchId,mode:room.mode,slot:room.players.indexOf(player),phase:room.phase,round:room.round,score:[...room.score],deadline:room.deadline?room.deadline-room.clock:0,
       offer:room.offers[player]??[],ownedBalls:room.ownedBalls[player]??[],pick:room.picks[player]??null,angleLocked:room.angles[player]!==undefined,collectionUsed:room.collectionUsed.has(player),rematchReady:room.rematch.size,rematchAvailable:room.forfeited.size===0,
       players:room.players.map((id,slot)=>({ready:room.ready.has(id),chosen:!!room.picks[id],connected:!room.disconnected.has(id)&&!room.forfeited.has(id),bot:id.startsWith('bot:'),team:slot%2})),
-      world:world?{tick:world.tick,seed:world.seed,phase:world.phase,balls:world.balls.map(b=>({...b})),winner:world.winner,reason:world.reason,hits:world.hits,events:world.events.map(e=>({...e})),projectiles:world.projectiles.map(p=>({...p})),lasers:world.lasers.map(laser=>({...laser,nextHitAt:{...laser.nextHitAt}})),webs:world.webs.map(web=>({...web,hitSlots:[...web.hitSlots],nextDamageAt:{...web.nextDamageAt}})),spikes:world.spikes.map(spike=>({...spike})),diceTraps:world.diceTraps.map(trap=>({...trap,nextHitAt:{...trap.nextHitAt}})),iceBombs:world.iceBombs.map(bomb=>({...bomb})),cannonTurrets:world.cannonTurrets.map(turret=>({...turret})),hookTethers:world.hookTethers.map(tether=>({...tether})),damageZones:world.damageZones.map(zone=>({...zone,nextDamageAt:{...zone.nextDamageAt}})),apples:world.apples.map(apple=>({...apple})),nextHazardId:world.nextHazardId,shardHitCounts:{...world.shardHitCounts},nextShardBurstId:world.nextShardBurstId,contacts:[...world.contacts],collisionLimitHits:world.collisionLimitHits}:null};
+      world:world?{tick:world.tick,seed:world.seed,phase:world.phase,balls:world.balls.map(b=>({...b})),winner:world.winner,reason:world.reason,hits:world.hits,events:world.events.map(e=>({...e})),projectiles:world.projectiles.map(p=>({...p})),lasers:world.lasers.map(laser=>({...laser,nextHitAt:{...laser.nextHitAt}})),webs:world.webs.map(web=>({...web,hitSlots:[...web.hitSlots],nextDamageAt:{...web.nextDamageAt}})),spikes:world.spikes.map(spike=>({...spike,nextDamageAt:{...(spike.nextDamageAt??{})}})),diceTraps:world.diceTraps.map(trap=>({...trap,nextHitAt:{...trap.nextHitAt}})),iceBombs:world.iceBombs.map(bomb=>({...bomb})),cannonTurrets:world.cannonTurrets.map(turret=>({...turret})),hookTethers:world.hookTethers.map(tether=>({...tether})),portals:world.portals.map(portal=>({...portal})),echoes:world.echoes.map(echo=>({...echo,points:echo.points.map(point=>({...point})),hitSlots:[...echo.hitSlots]})),damageZones:world.damageZones.map(zone=>({...zone,nextDamageAt:{...zone.nextDamageAt},enteredAt:{...(zone.enteredAt??{})},hitSlots:[...(zone.hitSlots??[])]})),apples:world.apples.map(apple=>({...apple})),nextHazardId:world.nextHazardId,shardHitCounts:{...world.shardHitCounts},nextShardBurstId:world.nextShardBurstId,contacts:[...world.contacts],collisionLimitHits:world.collisionLimitHits}:null};
   }
 }

@@ -12,7 +12,7 @@ export const STARTER_BALL_IDS: readonly BallId[] = ['jade', 'orange', 'pink'];
 /** Katalog posiadany przez starsze profile, zanim nowe kulki trafiły do skrzynki. */
 export const LEGACY_OWNED_BALL_IDS: readonly BallId[] = [
   'jade', 'steel', 'cyan', 'orange', 'pink', 'laser', 'cannon', 'spider', 'axe',
-  'blade', 'burst', 'charge', 'glass', 'machine-gun', 'poison-spike', 'thief',
+  'blade', 'burst', 'charge', 'glass', 'poison-spike', 'thief',
 ];
 
 export const BALL_SHOP = MATCH_BALLS.map(ball => ({

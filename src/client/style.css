@@ -222,7 +222,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .home-heading h1{margin:12px 0 9px;color:var(--text);font-size:clamp(38px,5vw,56px);font-weight:720;letter-spacing:-2.3px}
 .home-heading h1 span{color:var(--accent)}
 .home-heading p{color:#a7b3aa;font-size:13px;line-height:1.65}
-.home-heading::after{display:block;margin-top:18px;padding-top:13px;border-top:1px solid #ffffff14;color:#8d9b91;content:"16 KULEK   ·   4 TRYBY   ·   1–4 GRACZY";font-size:9px;font-weight:650;letter-spacing:1.35px}
+.home-stats{display:flex;gap:9px;align-items:center;margin-top:17px;padding-top:13px;border-top:1px solid #ffffff14;color:#8d9b91;font-size:9px;font-weight:650;letter-spacing:1.35px}
+.home-stats span{color:#c9e98a}
 .home-network{padding:0;border:0;background:transparent}
 .home-network #network-status{margin:0 0 12px;text-align:left;color:#9aa99f;font-size:11px;letter-spacing:.15px}
 .mode-options{gap:10px}
@@ -424,7 +425,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .home-wordmark{z-index:1;animation:wordmark-arrive .72s cubic-bezier(.2,.75,.25,1) .08s both}
 .home-wordmark>span{text-shadow:0 3px 0 #1c2b20,0 0 32px #c9e98a28;animation:wordmark-light 6s ease-in-out 1s infinite alternate}
 .home-wordmark>small{color:#aebbb0}
-.home-heading::after{content:"30 KULEK   ·   4 TRYBY   ·   1–4 GRACZY"}
 .home-shell{position:relative;z-index:1}
 .home-overlay:not([hidden]):not(.is-aiming):not(:has(#local-panel:not([hidden])))::before{
   position:absolute;z-index:0;inset:-10%;pointer-events:none;content:"";opacity:.8;
