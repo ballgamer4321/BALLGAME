@@ -20,6 +20,9 @@ export interface Ball {
   axeAngle: number; axeNextHitAt: number[];
   vampireTargetId: string | null; vampireUntil: number; vampireNextPulseAt: number; vampirePulsesLeft: number;
   cellGrowthLevel: number; cellNextGrowAt: number; cellSplitTriggered: boolean;
+  snakeHistory: { x: number; y: number }[]; snakeSegments: { x: number; y: number }[];
+  snakeSegmentCount: number; snakeNextGrowAt: number; snakeNextHitAt: number[];
+  appleNextDropAt: number;
   chessPhase: 'idle' | 'travel' | 'aim' | 'attack'; chessPhaseUntil: number;
   chessStartX: number; chessStartY: number; chessSavedVx: number; chessSavedVy: number;
   chessPattern: 'rook' | 'bishop' | 'knight' | null; chessPath: ChessPathSegment[];
@@ -34,6 +37,8 @@ export interface WebTrap { x: number; y: number; owner: number; radius: number; 
 export interface SpikeTrap { x: number; y: number; owner: number; radius: number; color: string; ttl: number; }
 export interface DiceTrap { x: number; y: number; owner: number; id: number; value: number; ttl: number; nextHitAt: Record<string, number>; }
 export interface IceBomb { x: number; y: number; owner: number; id: number; detonateAt: number; color: string; }
+export interface DamageZone { x: number; y: number; owner: number; radius: number; color: string; ttl: number; nextDamageAt: Record<string, number>; }
+export interface ApplePickup { x: number; y: number; owner: number; id: number; ttl: number; color: string; }
 export interface HookTether { owner: number; target: number; expiresAt: number; angle: number; radius: number; }
 export interface World {
   seed: number; tick: number; phase: 'running' | 'finished';
@@ -41,7 +46,8 @@ export interface World {
   winner: string | null; reason: 'knockout' | 'timeout' | null;
   hits: number; collisionLimitHits: number;
   projectiles: Projectile[];
-  lasers: LaserLine[]; webs: WebTrap[]; spikes: SpikeTrap[]; diceTraps: DiceTrap[]; iceBombs: IceBomb[]; hookTethers: HookTether[]; nextHazardId: number;
+  lasers: LaserLine[]; webs: WebTrap[]; spikes: SpikeTrap[]; damageZones: DamageZone[]; apples: ApplePickup[];
+  diceTraps: DiceTrap[]; iceBombs: IceBomb[]; hookTethers: HookTether[]; nextHazardId: number;
   shardHitCounts: Record<string, Record<string, number>>; nextShardBurstId: number;
 }
 
@@ -72,12 +78,14 @@ export function createWorld(seed = 1, picks?: string[], angles?: number[]): Worl
       axeAngle: 0, axeNextHitAt: Array(defs.length).fill(0), form: 'standard' as const,
       vampireTargetId: null, vampireUntil: 0, vampireNextPulseAt: 0, vampirePulsesLeft: 0,
       cellGrowthLevel: 0, cellNextGrowAt: ticks(5), cellSplitTriggered: false,
+      snakeHistory: [{ x, y }], snakeSegments: [], snakeSegmentCount: 1, snakeNextGrowAt: ticks(3),
+      snakeNextHitAt: Array(defs.length).fill(0), appleNextDropAt: ticks(2.5),
       chessPhase: 'idle' as const, chessPhaseUntil: 0, chessStartX: 0, chessStartY: 0, chessSavedVx: 0, chessSavedVy: 0,
       chessPattern: null, chessPath: [], diceNextDropAt: ticks(2), iceNextBombAt: 0,
       reforgeActive: false, reforgeDamage: 3, reforgeAngle: 0, reforgeTouching: false, reforgeNextHitAt: Array(defs.length).fill(0) };
   });
   return { seed, tick: 0, phase: 'running', balls, contacts: new Set(),
-    events: [], winner: null, reason: null, hits: 0, collisionLimitHits: 0, projectiles: [], lasers: [], webs: [], spikes: [],
+    events: [], winner: null, reason: null, hits: 0, collisionLimitHits: 0, projectiles: [], lasers: [], webs: [], spikes: [], damageZones: [], apples: [],
     diceTraps: [], iceBombs: [], hookTethers: [], nextHazardId: 1,
     shardHitCounts: {}, nextShardBurstId: 1 };
 }
@@ -173,6 +181,14 @@ function activateWallPower(w: World, ball: Ball, axis: 'x' | 'y') {
     if (owned.length >= 8) w.spikes.splice(w.spikes.indexOf(owned[0]), 1);
     w.spikes.push({ x: ball.x, y: ball.y, owner, radius: 0.42, color: '#8fd174', ttl: ticks(12) });
     w.events.push({ type: 'power', x: ball.x, y: ball.y, color: '#8fd174', radius: 0.9 });
+  } else if (kind(ball) === 'zone') {
+    if (w.tick < ball.abilityReadyAt) return;
+    ball.abilityReadyAt = w.tick + ticks(4);
+    const owner = w.balls.indexOf(ball);
+    const owned = w.damageZones.filter(zone => zone.owner === owner);
+    if (owned.length >= 1) w.damageZones.splice(w.damageZones.indexOf(owned[0]), 1);
+    w.damageZones.push({ x: ball.x, y: ball.y, owner, radius: 3.4, color: '#ef9664', ttl: ticks(5), nextDamageAt: {} });
+    w.events.push({ type: 'power', x: ball.x, y: ball.y, color: '#ef9664', radius: 3.4 });
   } else if (w.tick < ball.abilityReadyAt) return;
   else if (kind(ball) === 'violet') {
     ball.abilityReadyAt = w.tick + ticks(3);
@@ -598,6 +614,16 @@ function timedPowers(w: World) {
       ball.iceNextBombAt = w.tick + ticks(3);
       w.events.push({ type: 'power', x: ball.x, y: ball.y, color: '#9de7fa', radius: 0.9 });
     }
+    if (kind(ball) === 'apple' && w.tick >= ball.appleNextDropAt) {
+      const owned = w.apples.filter(apple => apple.owner === owner);
+      if (owned.length >= 4) w.apples.splice(w.apples.indexOf(owned[0]), 1);
+      const speed = Math.hypot(ball.vx, ball.vy) || 1;
+      const x = Math.max(-RULES.width / 2 + 0.6, Math.min(RULES.width / 2 - 0.6, ball.x - ball.vx / speed * 1.05));
+      const y = Math.max(-RULES.height / 2 + 0.6, Math.min(RULES.height / 2 - 0.6, ball.y - ball.vy / speed * 1.05));
+      w.apples.push({ x, y, owner, id: w.nextHazardId++, ttl: ticks(8), color: '#f26e69' });
+      ball.appleNextDropAt = w.tick + ticks(2.5);
+      w.events.push({ type: 'power', x, y, color: '#f26e69', radius: 0.8 });
+    }
     const enemy = other(w, ball);
     if (!enemy) continue;
     if (kind(ball) === 'machine-gun') {
@@ -767,6 +793,34 @@ function updateArenaHazards(w: World) {
       w.events.push({ type: 'power', x: trap.x, y: trap.y, color: '#f0eee5', radius: 0.7 });
     }
     return trap.ttl > 0 && !!w.balls[trap.owner];
+  });
+  w.damageZones = w.damageZones.filter(zone => {
+    zone.ttl--;
+    for (let slot = 0; slot < w.balls.length; slot++) {
+      const enemy = w.balls[slot];
+      if (enemy.hp <= 0 || enemy.team === w.balls[zone.owner]?.team ||
+          (zone.nextDamageAt[String(slot)] ?? 0) > w.tick || Math.hypot(enemy.x - zone.x, enemy.y - zone.y) > zone.radius) continue;
+      damage(w, enemy, 2, zone.color);
+      zone.nextDamageAt[String(slot)] = w.tick + ticks(0.5);
+      w.hits++;
+    }
+    return zone.ttl > 0 && !!w.balls[zone.owner];
+  });
+  w.apples = w.apples.filter(apple => {
+    apple.ttl--;
+    for (const target of w.balls) {
+      if (target.hp <= 0 || Math.hypot(target.x - apple.x, target.y - apple.y) > target.radius + 0.48) continue;
+      if (target.team === w.balls[apple.owner]?.team) {
+        if (target.hp >= target.maxHp) continue;
+        target.hp = Math.min(target.maxHp, target.hp + 5);
+        w.events.push({ type: 'power', x: apple.x, y: apple.y, color: '#9be680', radius: 0.9 });
+      } else {
+        damage(w, target, 7, apple.color);
+        w.hits++;
+      }
+      return false;
+    }
+    return apple.ttl > 0 && !!w.balls[apple.owner];
   });
   for (const bomb of w.iceBombs) {
     if (w.tick < bomb.detonateAt) continue;
@@ -988,6 +1042,35 @@ function updateReforgeAttacks(w: World) {
   }
 }
 
+function updateSnakeTails(w: World) {
+  for (const ball of w.balls) {
+    if (kind(ball) !== 'snake' || ball.hp <= 0) continue;
+    ball.snakeHistory.unshift({ x: ball.x, y: ball.y });
+    if (ball.snakeHistory.length > 420) ball.snakeHistory.length = 420;
+    if (ball.snakeSegmentCount < 10 && w.tick >= ball.snakeNextGrowAt) {
+      ball.snakeSegmentCount++;
+      ball.snakeNextGrowAt += ticks(3);
+      w.events.push({ type: 'power', x: ball.x, y: ball.y, color: '#72d88c', radius: 1.2 });
+    }
+    ball.snakeSegments = Array.from({ length: ball.snakeSegmentCount }, (_, index) =>
+      ball.snakeHistory[Math.min((index + 1) * 5, ball.snakeHistory.length - 1)] ?? { x: ball.x, y: ball.y });
+    for (let slot = 0; slot < w.balls.length; slot++) {
+      const target = w.balls[slot];
+      if (target.hp <= 0 || target.team === ball.team || (ball.snakeNextHitAt[slot] ?? 0) > w.tick) continue;
+      const segment = ball.snakeSegments.find(point => Math.hypot(target.x - point.x, target.y - point.y) <= target.radius + 0.3);
+      if (!segment) continue;
+      const dx = target.x - segment.x, dy = target.y - segment.y, distance = Math.hypot(dx, dy) || 1;
+      ball.snakeNextHitAt[slot] = w.tick + ticks(0.5);
+      damage(w, target, 4, '#72d88c');
+      target.vx += dx / distance * 2.2;
+      target.vy += dy / distance * 2.2;
+      w.hits++;
+      w.events.push({ type: 'impact', x: target.x, y: target.y, color: '#72d88c', radius: 0.34,
+        angle: Math.atan2(dy, dx), weapon: 'snake', owner: w.balls.indexOf(ball), elevation: target.radius + 0.04 });
+    }
+  }
+}
+
 /** Mutates one world by exactly one simulation tick; independent of browser and renderer. */
 export function stepWorld(w: World): void {
   if (w.phase === 'finished') return;
@@ -996,6 +1079,7 @@ export function stepWorld(w: World): void {
   integrate(w);
   updateSustainedContacts(w);
   w.tick++;
+  updateSnakeTails(w);
   updateStatuses(w);
   updateBladeAttacks(w);
   updateAxeAttacks(w);

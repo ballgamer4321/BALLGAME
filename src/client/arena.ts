@@ -460,6 +460,51 @@ function makeBallSignature(id: string, color: string) {
     const tail = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.36, 6), steel);
     tail.rotation.x = -Math.PI / 2; tail.position.z = -0.28; companion.add(tail);
   }
+  if (id === 'snake') {
+    const head = new THREE.Group(); head.name = 'snake-head'; group.add(head);
+    const headPart = (geometry: THREE.BufferGeometry, material: THREE.Material, position: [number, number, number], rotation: [number, number, number] = [0, 0, 0]) => {
+      const mesh = new THREE.Mesh(geometry, material); mesh.position.set(...position); mesh.rotation.set(...rotation); mesh.castShadow = true; head.add(mesh); return mesh;
+    };
+    const hood = headPart(new THREE.SphereGeometry(0.42, 18, 12), accent, [0, 0.22, 1.03]);
+    hood.scale.set(1.06, 0.78, 0.94);
+    headPart(new THREE.BoxGeometry(0.32, 0.16, 0.38), dark, [0, 0.18, 1.27]);
+    for (const side of [-1, 1]) {
+      headPart(new THREE.SphereGeometry(0.085, 10, 8), steel, [side * 0.2, 0.34, 1.38]);
+      headPart(new THREE.SphereGeometry(0.035, 8, 6), dark, [side * 0.2, 0.34, 1.425]);
+      headPart(new THREE.ConeGeometry(0.075, 0.24, 6), steel, [side * 0.13, 0.08, 1.48], [Math.PI / 2, 0, Math.PI + side * 0.16]);
+    }
+    const crest = headPart(new THREE.ConeGeometry(0.16, 0.42, 5), brass, [0, 0.5, 1.03]);
+    crest.rotation.z = Math.PI;
+    for (let index = 0; index < 10; index++) {
+      const segment = new THREE.Group(); segment.name = 'snake-segment'; segment.userData.index = index;
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.31 - index * 0.01, 14, 10), index % 2 ? dark : accent);
+      body.scale.set(1, 0.73, 1.16); body.position.y = 0.25; body.castShadow = true; segment.add(body);
+      const scale = new THREE.Mesh(new THREE.OctahedronGeometry(0.13, 0), brass);
+      scale.position.set(0, 0.43, -0.02); scale.scale.set(0.72, 0.52, 1.1); segment.add(scale);
+      segment.position.set(0, 0.22, -(index + 1) * 0.78); group.add(segment);
+    }
+  }
+  if (id === 'zone') {
+    const hub = add(new THREE.CylinderGeometry(0.3, 0.42, 0.3, 8), dark, [0, 0.16, 0.78]);
+    hub.rotation.x = Math.PI / 2;
+    const core = add(new THREE.OctahedronGeometry(0.3, 0), accent, [0, 0.2, 1.02], [0.2, 0, Math.PI / 4]);
+    core.name = 'zone-core';
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.88, 0.07, 8, 40), brass);
+    ring.rotation.x = Math.PI / 2; ring.position.y = 0.08; ring.name = 'zone-ring'; group.add(ring);
+    const emitter = add(new THREE.ConeGeometry(0.16, 0.48, 5), steel, [0, 0.16, 1.38]);
+    emitter.name = 'zone-emitter';
+  }
+  if (id === 'apple') {
+    const basket = add(new THREE.BoxGeometry(0.56, 0.18, 0.44), dark, [0, 0.1, 0.76]);
+    basket.rotation.x = Math.PI / 2;
+    const fruit = add(new THREE.SphereGeometry(0.35, 16, 12), accent, [0, 0.18, 1.05]);
+    fruit.scale.set(0.92, 0.83, 1.05);
+    add(new THREE.SphereGeometry(0.22, 14, 10), accent, [0, 0.19, 1.25]);
+    const stem = add(new THREE.CylinderGeometry(0.045, 0.055, 0.3, 7), wood, [0, 0.43, 1.19], [0.18, 0, 0]);
+    stem.name = 'apple-stem';
+    const leaf = add(new THREE.SphereGeometry(0.16, 10, 8), new THREE.MeshStandardMaterial({ color: '#8bd36c', roughness: 0.48 }), [0.13, 0.49, 1.18]);
+    leaf.scale.set(1.55, 0.28, 0.58); leaf.rotation.z = -0.32;
+  }
   if (id === 'axe') {
     const start = new THREE.Vector3(0.19, 0.14, 0.98);
     const end = new THREE.Vector3(0.56, 0.14, 1.86);
@@ -560,6 +605,43 @@ function makeIceBombVisual() {
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.04, 7, 24), new THREE.MeshBasicMaterial({ color: '#e9fbff' }));
   ring.rotation.x = Math.PI / 2; ring.position.y = 0.12; group.add(ring);
   group.visible = false;
+  return group;
+}
+
+function makeAppleVisual() {
+  const group = new THREE.Group(); group.visible = false;
+  const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 12),
+    new THREE.MeshStandardMaterial({ color: '#f26e69', roughness: 0.28, metalness: 0.12 }));
+  fruit.position.y = 0.35; fruit.scale.set(0.88, 0.82, 0.96); fruit.castShadow = true; group.add(fruit);
+  const crown = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8),
+    new THREE.MeshStandardMaterial({ color: '#ff8b78', roughness: 0.32 }));
+  crown.position.set(0, 0.46, 0); crown.scale.set(1, 0.62, 0.95); group.add(crown);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.2, 7),
+    new THREE.MeshStandardMaterial({ color: '#6f492d', roughness: 0.76 }));
+  stem.position.set(0, 0.63, 0); stem.rotation.z = -0.2; group.add(stem);
+  const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8),
+    new THREE.MeshStandardMaterial({ color: '#91d76b', roughness: 0.44 }));
+  leaf.position.set(0.11, 0.68, 0); leaf.scale.set(1.45, 0.35, 0.52); leaf.rotation.z = -0.28; group.add(leaf);
+  const shine = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), new THREE.MeshBasicMaterial({ color: '#fff3dd' }));
+  shine.position.set(-0.16, 0.48, 0.22); group.add(shine);
+  return group;
+}
+
+function makeDamageZoneVisual() {
+  const group = new THREE.Group(); group.visible = false;
+  const field = new THREE.Mesh(new THREE.CircleGeometry(1, 48),
+    new THREE.MeshBasicMaterial({ color: '#ef9664', transparent: true, opacity: 0.14, side: THREE.DoubleSide, depthWrite: false }));
+  field.rotation.x = -Math.PI / 2; field.position.y = 0.035; group.add(field);
+  const rim = new THREE.Mesh(new THREE.RingGeometry(0.91, 1, 48),
+    new THREE.MeshBasicMaterial({ color: '#ffb67f', transparent: true, opacity: 0.78, side: THREE.DoubleSide, depthWrite: false }));
+  rim.rotation.x = -Math.PI / 2; rim.position.y = 0.045; group.add(rim);
+  for (let index = 0; index < 6; index++) {
+    const angle = index / 6 * Math.PI * 2;
+    const marker = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.34, 5),
+      new THREE.MeshStandardMaterial({ color: '#ffd3a1', emissive: '#a55232', emissiveIntensity: 0.24 }));
+    marker.position.set(Math.cos(angle) * 0.96, 0.13, Math.sin(angle) * 0.96);
+    marker.rotation.z = -Math.cos(angle) * 0.82; marker.rotation.x = Math.sin(angle) * 0.82; group.add(marker);
+  }
   return group;
 }
 
@@ -691,6 +773,8 @@ export class Arena {
   private hookTetherStrips: EnergyStrip[] = [];
   private webVisuals: THREE.Group[] = [];
   private spikeVisuals: THREE.Group[] = [];
+  private zoneVisuals: THREE.Group[] = [];
+  private appleVisuals: THREE.Group[] = [];
   private diceVisuals: DiceVisual[] = [];
   private iceBombVisuals: THREE.Group[] = [];
   private chessRouteVisuals: (THREE.Line | null)[] = [];
@@ -804,6 +888,12 @@ export class Arena {
     for (let i = 0; i < 8; i++) {
       const bomb = makeIceBombVisual(); this.scene.add(bomb); this.iceBombVisuals.push(bomb);
     }
+    for (let i = 0; i < 4; i++) {
+      const zone = makeDamageZoneVisual(); this.scene.add(zone); this.zoneVisuals.push(zone);
+    }
+    for (let i = 0; i < 16; i++) {
+      const apple = makeAppleVisual(); this.scene.add(apple); this.appleVisuals.push(apple);
+    }
     this.observer = new ResizeObserver(() => this.resize());
     this.observer.observe(container);
     this.resize();
@@ -854,6 +944,8 @@ export class Arena {
 
   reset(w: World) {
     this.previous = w.balls.map(b => ({ x: b.x, y: b.y }));
+    this.zoneVisuals.forEach(zone => { zone.visible = false; });
+    this.appleVisuals.forEach(apple => { apple.visible = false; });
     this.chessRouteVisuals.forEach(mesh => { if (mesh) { this.scene.remove(mesh); mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); } });
     this.chessRouteVisuals = []; this.chessRouteKeys = [];
     this.diceVisuals.forEach(die => { die.group.visible = false; });
@@ -946,7 +1038,7 @@ export class Arena {
     if (!definition) { this.abilityGroups[index] = null; return; }
     const signature = makeBallSignature(definition.id, definition.color);
     if (definition.id === 'axe') signature.scale.setScalar(AXE_VISUAL_SCALE);
-    if (definition.id === 'axe') this.scene.add(signature);
+    if (definition.id === 'axe' || definition.id === 'snake') this.scene.add(signature);
     else group.add(signature);
     this.axeAngleReady[index] = false;
     this.abilityGroups[index] = signature;
@@ -1080,6 +1172,21 @@ export class Arena {
           }
           signature.rotation.y = this.reducedMotion.matches ? 0 : -this.axeAngles[i];
         }
+        if (b.abilityId === 'snake') {
+          signature.position.set(x, 0.08, y);
+          const head = signature.getObjectByName('snake-head');
+          if (head) head.rotation.y = Math.atan2(b.vx, b.vy);
+          const segments = signature.children.filter(child => child.name === 'snake-segment');
+          segments.forEach((segment, index) => {
+            const position = b.snakeSegments[index];
+            segment.visible = b.hp > 0 && index < b.snakeSegmentCount && !!position;
+            if (!position) return;
+            segment.position.set(position.x - x, 0.22, position.y - y);
+            const sway = this.reducedMotion.matches ? 0 : Math.sin(this.fxClock * 7 - index * 0.55) * 0.08;
+            segment.rotation.y = sway;
+            segment.position.y += this.reducedMotion.matches ? 0 : Math.sin(this.fxClock * 6 - index * 0.48) * 0.025;
+          });
+        }
         const enemies = w.balls.filter(candidate => candidate.hp > 0 && candidate.team !== b.team)
           .sort((a, other) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(other.x - b.x, other.y - b.y));
         const target = enemies[0];
@@ -1089,7 +1196,7 @@ export class Arena {
           const spinRate: Record<string, number> = {
             amber: 0.7, jade: 0.52, violet: 0.9, gold: 1.35, cyan: 0.72, pink: 0.9, laser: 0.85,
             blade: 0.8, charge: 0.16, glass: 0.22, 'poison-spike': 0.24,
-            chess: 0.12, dice: 0.32, electric: 1.2, 'ice-cone': 0.55,
+            chess: 0.12, dice: 0.32, electric: 1.2, 'ice-cone': 0.55, zone: 0.38, apple: 0.22,
           };
           if (b.abilityId !== 'axe' && spinRate[b.abilityId ?? '']) signature.rotation.y = b.abilityId === 'blade'
             ? -b.bladeAngle : this.fxClock * spinRate[b.abilityId ?? ''];
@@ -1142,7 +1249,7 @@ export class Arena {
           const blades = orbit?.userData.blades as THREE.Group[] | undefined;
           blades?.forEach((sword, index) => { sword.visible = index < b.bladeCount; });
         }
-        if (b.abilityId !== 'axe' && this.recoil[i] > 0) {
+        if (b.abilityId !== 'axe' && b.abilityId !== 'snake' && this.recoil[i] > 0) {
           signature.position.set(-Math.sin(signature.rotation.y) * this.recoil[i], 0, -Math.cos(signature.rotation.y) * this.recoil[i]);
         }
       }
@@ -1369,6 +1476,30 @@ export class Arena {
       const orb = bombVisual.children[0] as THREE.Mesh;
       const material = orb.material as THREE.MeshStandardMaterial;
       material.color.set(bomb.color); material.emissive.set(bomb.color); material.emissiveIntensity = 0.15 + (1 - remaining / 1.5) * 0.35;
+    });
+    this.zoneVisuals.forEach((visual, index) => {
+      const zone = w.damageZones[index]; visual.visible = !!zone;
+      if (!zone) return;
+      const remaining = Math.max(0, zone.ttl / 300);
+      visual.position.set(zone.x, 0, zone.y);
+      visual.scale.setScalar(zone.radius);
+      visual.rotation.y = this.reducedMotion.matches ? 0 : this.fxClock * (index % 2 ? -0.16 : 0.16);
+      const field = visual.children[0] as THREE.Mesh;
+      const rim = visual.children[1] as THREE.Mesh;
+      (field.material as THREE.MeshBasicMaterial).color.set(zone.color);
+      (field.material as THREE.MeshBasicMaterial).opacity = 0.1 + Math.min(1, remaining * 2) * 0.09;
+      (rim.material as THREE.MeshBasicMaterial).color.set('#ffb67f');
+      (rim.material as THREE.MeshBasicMaterial).opacity = 0.35 + Math.min(1, remaining * 2) * 0.45;
+    });
+    this.appleVisuals.forEach((visual, index) => {
+      const apple = w.apples[index]; visual.visible = !!apple;
+      if (!apple) return;
+      visual.position.set(apple.x, 0.025 + (this.reducedMotion.matches ? 0 : Math.sin(this.fxClock * 4 + index) * 0.035), apple.y);
+      visual.rotation.y = this.reducedMotion.matches ? 0 : this.fxClock * 0.8 + index * 0.4;
+      const remaining = Math.max(0, apple.ttl / 480);
+      visual.scale.setScalar(0.86 + Math.min(1, remaining * 3) * 0.14);
+      const fruit = visual.children[0] as THREE.Mesh;
+      (fruit.material as THREE.MeshStandardMaterial).color.set(apple.color);
     });
     this.renderer.render(this.scene, this.camera);
   }
