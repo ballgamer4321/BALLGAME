@@ -4,7 +4,7 @@ Projekt: `C:\Users\antre\Desktop\ball game`; GitHub `https://github.com/ballgame
 
 ## Stan
 
-Etapy 1–6 i 8–9: DONE. Etap 7 pozostaje IN_PROGRESS — nie wykonano ręcznego QA 360×800/landscape ani pomiaru FPS. Obecny podetap poprawia czytelność modeli: wszystkie 14 kulek ma charakterystyczny dodatek, a Topór ma drewniany trzonek, szerokie ostrze i metalową krawędź. Broń porusza się zamiast polegać na pulsującym podświetleniu. Kod/testy/build przechodzą; publikacja w toku.
+Etapy 1–6 i 8–9: DONE. Etap 7 pozostaje IN_PROGRESS — brak ręcznego QA 360×800/landscape i pomiaru FPS. Modele wszystkich 14 kulek zostały poprawione i wdrożone. Topór ma czytelny drewniany trzonek, szerokie metalowe ostrze i krawędź tnącą; pozostałe kulki mają własne dodatki rozpoznawalne po sylwetce. Broń jest animowana zamiast pulsujących aureoli. Produkcja READY; strona i API 1v1 odpowiadają poprawnie. Ręcznego obrazu nie sprawdzono.
 
 ## Uruchomienie i weryfikacja
 
@@ -17,14 +17,13 @@ Node.js: `C:\Users\antre\.cache\codex-runtimes\codex-primary-runtime\dependencie
 - Serwer: `node node_modules/tsx/dist/cli.mjs src/server/index.ts`
 - Adres: `http://127.0.0.1:5173/`
 
-W PowerShell, gdy `node` nie jest w PATH, poprzedź komendy pełną ścieżką do `node.exe` wyżej.
+W PowerShell, gdy `node` nie jest w PATH, poprzedź komendy pełną ścieżką do `node.exe` powyżej.
 
-## Pliki i dalsze kroki
+## Pliki i następne kroki
 
-- `src/client/arena.ts` — modele, animacje, geometria i efekty Three.js.
-- `src/client/main.ts`, `src/client/style.css` — flow, HUD, UI.
-- `src/simulation/world.ts`, `src/server/rooms.ts`, `tests/` — symulacja, multiplayer, testy.
-- Opublikować zweryfikowany model na GitHub i Vercel; sprawdzić HTTP oraz API.
-- Następnie wrócić do ręcznego QA 360×800, landscape i FPS. Nie omijać blokady lokalnej karty innym sterowaniem.
+- `src/client/arena.ts` — modele, geometria i animacje Three.js.
+- `src/client/main.ts`, `src/client/style.css` — flow, HUD i UI.
+- `src/simulation/world.ts`, `src/server/rooms.ts`, `tests/` — symulacja i multiplayer.
+- Gdy będzie dostępna dozwolona ścieżka: sprawdzić modele wizualnie na 360×800 i landscape, zmierzyć FPS, potem ocenić etap 7.
 
-Ostatnie testy: 48/48; TypeScript; Vite build; diff check — OK. Ręcznego obrazu/FPS nie sprawdzono.
+Ostatnie testy: 48/48; TypeScript; Vite build; diff check — OK. Manualne QA/FPS nadal niewykonane. Nie omijać blokady lokalnej karty innym sterowaniem.
