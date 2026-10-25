@@ -1,9 +1,10 @@
 import { expect, it } from 'vitest';
-import { awardMatch, createProgress, equipCosmetic, normalizeProgress, purchaseCosmetic } from '../src/shared/progression';
+import { awardMatch, createProgress, equipCosmetic, normalizeProgress, purchaseCosmetic, rewardForOutcome } from '../src/shared/progression';
 import { adsProvider } from '../src/client/ads';
 import { progressIdForToken } from '../api/profile';
 
 it('grants match currency once per server match id', () => {
+  expect([rewardForOutcome('win'), rewardForOutcome('draw'), rewardForOutcome('loss')]).toEqual([20, 10, 8]);
   const first = awardMatch(createProgress(1), 'match_123', 'win', 2);
   expect(first.awarded).toBe(20);
   expect(first.progress).toMatchObject({ coins: 20, matches: 1, wins: 1 });

@@ -6,6 +6,9 @@ export const COSMETICS = [
 
 export type CosmeticId = typeof COSMETICS[number]['id'];
 export type MatchOutcome = 'win' | 'draw' | 'loss';
+export const MATCH_REWARDS: Record<MatchOutcome, number> = { win: 20, draw: 10, loss: 8 };
+
+export function rewardForOutcome(outcome: MatchOutcome) { return MATCH_REWARDS[outcome]; }
 
 export interface ProgressRecord {
   version: 1;
@@ -73,7 +76,7 @@ export function awardMatch(progress: ProgressRecord, matchId: string, outcome: M
   if (!/^[a-zA-Z0-9_-]{1,80}$/.test(matchId)) throw new ProgressError('Nieprawidłowy identyfikator meczu');
   const current = normalizeProgress(progress, now);
   if (current.processedMatches[matchId]) return { progress: current, awarded: 0, duplicate: true };
-  const awarded = outcome === 'win' ? 20 : outcome === 'draw' ? 10 : 8;
+  const awarded = rewardForOutcome(outcome);
   const processedMatches = { ...current.processedMatches, [matchId]: true as const };
   const recentClaims = Object.fromEntries(Object.entries(processedMatches).slice(-256));
   return {

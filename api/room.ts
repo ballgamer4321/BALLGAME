@@ -1,6 +1,7 @@
 import { firebaseConfigured, firebaseDatabase } from './firebase.js';
 import { handleHostedAction, HostedError, type HostedAction, type HostedStore, type StoredMatch } from '../src/server/hosted.js';
 import { ensureProgress, progressIdForToken, awardProgressMatch } from './profile.js';
+import { rewardForOutcome } from '../src/shared/progression.js';
 
 const ROOM_TTL_MS = 60 * 60 * 1000;
 
@@ -81,8 +82,8 @@ async function awardCompletedMatch(code: string, sessionToken?: string) {
     const profileId = match.profiles?.[player];
     if (!profileId) continue;
     const outcome = winnerTeam === null ? 'draw' : slot % 2 === winnerTeam ? 'win' : 'loss';
-    const awarded = await awardProgressMatch(profileId, room.matchId, outcome);
-    if (player === requestedPlayer) requestedReward = awarded;
+    await awardProgressMatch(profileId, room.matchId, outcome);
+    if (player === requestedPlayer) requestedReward = rewardForOutcome(outcome);
   }
   return requestedReward;
 }
