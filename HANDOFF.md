@@ -4,7 +4,7 @@ Projekt: `C:\Users\antre\Desktop\ball game`; GitHub `https://github.com/ballgame
 
 ## Stan
 
-Etapy 1–6 i 8–9 są DONE. Etap 7 (oprawa i telefony) pozostaje IN_PROGRESS, bo brakuje ręcznego QA 360×800/landscape i pomiaru FPS. Ostatni polish pokazał pozostałe HP i skład obu stron na ekranie wyniku, ograniczył koszt aktualizacji HUD, odświeżył metadane/favicon i rozdzielił bundel Three.js. Poprawka jest na GitHub `main`, a production Vercel jest READY. HTTP: strona 200, `/api/room` `online:true`, oba chunki JS 200. Nie obchodź blokady narzędzia przeglądarki innym sterowaniem.
+Etapy 1–6 i 8–9 są DONE. Etap 7 (oprawa i telefony) pozostaje IN_PROGRESS: brakuje ręcznego QA 360×800/landscape i pomiaru FPS. Najnowsza lokalna zmiana zamienia pulsujące efekty mocy na animowane odłamki i ruch broni: topór krąży, lufy karabinu obracają się, działa celują, Pajęczak animuje nogami, a lasery i sieci poruszają się. Pauza zatrzymuje te animacje; reduced motion pozostawia efekty statyczne. Testy i build lokalnie przechodzą; publikacja w toku.
 
 ## Uruchomienie i weryfikacja
 
@@ -19,15 +19,12 @@ Node.js: `C:\Users\antre\.cache\codex-runtimes\codex-primary-runtime\dependencie
 
 W PowerShell, jeśli `node` nie jest w PATH, poprzedź każdą komendę pełną ścieżką do `node.exe` powyżej.
 
-## Pliki i następne działania
+## Najważniejsze pliki i dalsze kroki
 
-- `src/client/main.ts` — flow, HUD, wyniki; `src/client/arena.ts` — Three.js; `src/client/style.css` — UI/responsywność.
-- `src/simulation/world.ts`, `src/server/rooms.ts`, `tests/` — symulacja, multiplayer, scenariusze.
-- `PROGRESS.md` — status etapów i aktualne wyniki.
+- `src/client/arena.ts` — modele, animacje broni i efekty Three.js.
+- `src/client/main.ts`, `src/client/style.css` — flow, HUD, UI/responsywność.
+- `src/simulation/world.ts`, `src/server/rooms.ts`, `tests/` — symulacja i multiplayer.
+- Wypchnąć zweryfikowany kod na GitHub i poczekać na Vercel READY; sprawdzić produkcyjne API.
+- Dokończyć ręczne QA etapu 7 dla 360×800 i landscape oraz pomiar FPS, gdy dostępna będzie dozwolona ścieżka.
 
-1. Sprawdzić, czy pliki postępu są zsynchronizowane z GitHub po ostatnim opisie READY.
-2. Gdy dostępna będzie dozwolona ścieżka, wykonać wizualne QA etapu 7 na 360×800 i w landscape.
-3. Zmierzyć FPS WebGL na słabszym sprzęcie albo jawnie zostawić wynik jako niewykonany.
-4. Zaktualizować status etapu 7 dopiero po spełnieniu kryteriów.
-
-Ostatnie testy: 48/48; TypeScript; Vite build; diff check — OK. Ręczny obraz i FPS nie zostały sprawdzone.
+Ostatnie testy: 48/48; TypeScript; Vite build; diff check — OK. Obraz i FPS nie były ręcznie sprawdzone. Nie omijać blokady lokalnej karty przeglądarki.

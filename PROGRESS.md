@@ -1,19 +1,20 @@
 # Postęp — Orbita: Starcie
 
-Aktualizacja: 2026-10-25. Bieżący etap: 7 — oprawa i telefony (IN_PROGRESS; brak ręcznego QA różnych ekranów i FPS). Etapy 1–6 oraz 8–9: DONE. Bieżący podetap całościowego polishu zakończony i opublikowany.
+Aktualizacja: 2026-10-25. Etap 7 — oprawa i telefony: IN_PROGRESS. Etapy 1–6 oraz 8–9: DONE. Bieżący podetap animacji kulek ukończony lokalnie i sprawdzony; publikacja w toku.
 
 ## Działa
 
 - Lokalna walka, multiplayer 1v1/2v2, trening z botem, 14 kulek ze zdolnościami, celowanie, rewanże i kolekcja Firebase.
-- Ekran wyniku pokazuje pozostałe HP obu stron i ich skład; HUD odświeża się rzadziej, a selektory DOM są buforowane.
-- Metadane i favicon odpowiadają grze. Three.js jest osobnym chunkiem: aplikacja 62 kB, renderer 496 kB; build nie zgłasza przekroczenia rozmiaru pojedynczego pliku.
+- Topór obraca się wokół kulki; karabin kręci lufami; laser i wiązka namierzają wroga; Pajęczak animuje odnóża, a pułapki sieciowe obracają się.
+- Pulsujące podświetlenia mocy zastąpiono krótkimi wirującymi odłamkami; lasery i wiązki mają przesuwające się znaczniki ze stałą jasnością.
+- Animacje zatrzymują się przy pauzie i respektują ustawienie ograniczenia ruchu.
 
-## Weryfikacja i wdrożenie
+## Weryfikacja
 
 - 48/48 testów, `tsc --noEmit`, produkcyjny build Vite i `git diff --check` — OK.
-- Kod: commit `8a2ff4e` na GitHub `main`. Vercel production READY (`dpl_HqobMhxf3oSWe2JiQDtyLG46DfQT`); alias `https://ballgame-tawny.vercel.app/` zwraca HTTP 200, `/api/room` zwraca `online:true`; aplikacyjny i Three.js chunk zwracają 200.
-- Ręcznej kontroli wizualnej, fizycznego telefonu ani FPS nie wykonano. Wcześniej narzędzie zablokowało dostęp do lokalnej karty; tej blokady nie omijać.
+- Build: aplikacja 65 kB, chunk Three.js 496 kB; bez ostrzeżenia o pojedynczym zbyt dużym pliku.
+- Ręcznego QA 360×800, landscape ani pomiaru FPS nadal nie wykonano; nie omijać blokady narzędzia przeglądarki.
 
 ## Dokładny następny krok
 
-Wykonać brakujące QA etapu 7 dla 360×800, landscape i FPS, gdy dostępna będzie dozwolona ścieżka kontroli. Do tego czasu nie oznaczać etapu 7 jako DONE.
+Opublikować tę zmianę na GitHub `main`, sprawdzić Vercel production i HTTP, zaktualizować ten raport, a następnie wrócić do brakującego QA etapu 7.
