@@ -22,7 +22,7 @@ app.innerHTML = `
         <div class="viewport">
           <div class="arena-label"><span class="live-dot"></span><span id="phase-label">GOTOWOŚĆ</span><span class="arena-number">ARENA 01</span></div>
           <div id="scene"></div>
-          <div id="home-overlay" class="home-overlay"><div class="home-shell"><div class="home-heading"><span class="eyebrow">ORBITA / STARCIE</span><h1 id="home-title">Wybierz tryb gry<span>.</span></h1><p id="home-subtitle">Wybierz kulkę, ustaw kierunek i patrz, jak walczy.</p></div><div class="home-content"><section id="local-panel" class="local-panel" data-side="local" hidden><button id="local-back" class="back-button" type="button">← Wróć do trybów</button><span class="eyebrow">TRENING LOKALNY</span><h2>Przygotuj pojedynek</h2><span id="status" class="status">Gotowe</span><p id="hint" class="hint">Wybierz kulki i kierunek startowy.</p><div id="local-aim" class="aim-picker"><div class="local-side-tabs" role="group" aria-label="Wybierz stronę"><button type="button" data-side="local" aria-pressed="true">Twoja kulka</button><button type="button" data-side="rival" aria-pressed="false">Rywal</button></div><div class="local-choice-pair"><div><label for="local-ball">Twoja kulka</label><select id="local-ball">${MATCH_BALLS.map(b => `<option value="${b.id}">${b.name} · ${b.ability}</option>`).join('')}</select></div><div><label for="rival-ball">Rywal</label><select id="rival-ball">${MATCH_BALLS.map(b => `<option value="${b.id}" ${b.id === 'jade' ? 'selected' : ''}>${b.name} · ${b.ability}</option>`).join('')}</select></div></div><label for="local-angle">Kierunek twojej kulki <output id="local-angle-value">0°</output></label><input id="local-angle" type="range" min="-180" max="180" value="0"><p>Walka zacznie się po kliknięciu przycisku. Podczas walki kulki poruszają się same.</p></div><button id="start" class="primary">Rozpocznij pojedynek <span>↗</span></button></section></div></div></div>
+          <div id="home-overlay" class="home-overlay"><div class="home-shell"><div class="home-heading"><span class="eyebrow">ORBITA / STARCIE</span><h1 id="home-title">Wybierz tryb gry<span>.</span></h1><p id="home-subtitle">Wybierz kulkę, ustaw kierunek i patrz, jak walczy.</p></div><div class="home-content"><section id="local-panel" class="local-panel" data-side="local" hidden><button id="local-back" class="back-button" type="button">← Wróć do trybów</button><span class="eyebrow">TRENING LOKALNY</span><h2>Przygotuj pojedynek</h2><span id="status" class="status">Gotowe</span><p id="hint" class="hint">Wybierz kulki i kierunek startowy.</p><div id="local-aim" class="aim-picker"><div class="local-side-tabs" role="group" aria-label="Wybierz stronę"><button type="button" data-side="local" aria-pressed="true">Twoja kulka</button><button type="button" data-side="rival" aria-pressed="false">Rywal</button></div><div class="local-choice-pair"><div><label for="local-ball">Twoja kulka</label><select id="local-ball">${MATCH_BALLS.map(b => `<option value="${b.id}">${b.name} · ${b.ability}</option>`).join('')}</select></div><div><label for="rival-ball">Rywal</label><select id="rival-ball">${MATCH_BALLS.map(b => `<option value="${b.id}" ${b.id === 'jade' ? 'selected' : ''}>${b.name} · ${b.ability}</option>`).join('')}</select></div></div><div class="local-direction-row"><div class="direction-grid" id="local-direction" role="group" aria-label="Ustaw kierunek startowy"><button type="button" data-angle="-135" aria-label="Góra lewo">↖</button><button type="button" data-angle="-90" aria-label="Góra">↑</button><button type="button" data-angle="-45" aria-label="Góra prawo">↗</button><button type="button" data-angle="180" aria-label="Lewo">←</button><i aria-hidden="true"></i><button type="button" data-angle="0" aria-label="Prawo" aria-pressed="true">→</button><button type="button" data-angle="135" aria-label="Dół lewo">↙</button><button type="button" data-angle="90" aria-label="Dół">↓</button><button type="button" data-angle="45" aria-label="Dół prawo">↘</button></div><p>Przeciągnij po kompasie; kierunek pokaże strzałka na arenie.</p></div><p>Walka zacznie się po kliknięciu przycisku. Podczas walki kulki poruszają się same.</p></div><button id="start" class="primary">Rozpocznij pojedynek <span>↗</span></button></section></div></div></div>
           <div class="floor-label">ORBITA <span> / </span> COLLISION LAB</div>
           <div id="result" class="result" hidden role="status"><span class="eyebrow">POJEDYNEK ZAKOŃCZONY</span><h2 id="result-title"></h2><p id="result-detail"></p><button id="replay" class="primary">Przygotuj kolejny pojedynek <span>↗</span></button></div>
         </div>
@@ -148,7 +148,7 @@ function prepareNext() {
   get('local-aim').hidden = false;
   get('phase-label').textContent = 'GOTOWOŚĆ';
   get('status').textContent = 'Gotowe';
-  get('hint').textContent = 'Ustaw kierunek na arenie lub suwakiem, a potem rozpocznij pojedynek.';
+  get('hint').textContent = 'Wybierz kierunek na kompasie albo przeciągnij po nim, a potem rozpocznij pojedynek.';
   get<HTMLButtonElement>('start').disabled = false;
   get('start').innerHTML = 'Rozpocznij pojedynek <span>↗</span>';
   updateHud();
@@ -191,11 +191,38 @@ for (const [id, slot] of [['local-ball', 0], ['rival-ball', 1]] as const) {
     get('status').textContent = 'Gotowe';
   });
 }
-get<HTMLInputElement>('local-angle').addEventListener('input', event => {
-  localAngle = Number((event.target as HTMLInputElement).value) * Math.PI / 180;
-  get('local-angle-value').textContent = `${Math.round(localAngle * 180 / Math.PI)}°`;
+function setLocalAngle(degrees: number) {
+  const value = Math.max(-180, Math.min(180, Math.round(degrees)));
+  localAngle = value * Math.PI / 180;
+  document.querySelectorAll<HTMLButtonElement>('#local-direction [data-angle]').forEach(button =>
+    button.setAttribute('aria-pressed', String(Number(button.dataset.angle) === value)));
   if (!online && !running) arena.setAimPreview(world, 0, localAngle);
+}
+get('local-direction').addEventListener('click', event => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-angle]');
+  if (button) setLocalAngle(Number(button.dataset.angle));
 });
+const localDirectionPad = get('local-direction');
+let directionPointer: number | null = null;
+function pointDirection(event: PointerEvent, pad: HTMLElement) {
+  const rect = pad.getBoundingClientRect();
+  const x = event.clientX - (rect.left + rect.width / 2);
+  const y = event.clientY - (rect.top + rect.height / 2);
+  if (Math.hypot(x, y) < 8) return;
+  setLocalAngle(Math.atan2(y, x) * 180 / Math.PI);
+}
+localDirectionPad.addEventListener('pointerdown', event => {
+  directionPointer = event.pointerId;
+  localDirectionPad.setPointerCapture(event.pointerId);
+  pointDirection(event, localDirectionPad);
+});
+localDirectionPad.addEventListener('pointermove', event => {
+  if (directionPointer === event.pointerId) pointDirection(event, localDirectionPad);
+});
+localDirectionPad.addEventListener('pointerup', event => {
+  if (directionPointer === event.pointerId) directionPointer = null;
+});
+localDirectionPad.addEventListener('pointercancel', () => { directionPointer = null; });
 const sceneElement = get('scene');
 let aimingPointer: number | null = null;
 const canPointAim = () => online ? (lastNetworkPhase === 'select' || lastNetworkPhase === 'aim') && !!onlineAim?.canAim() : !running && world.phase === 'running';
@@ -205,12 +232,7 @@ function updatePointAim(event: PointerEvent) {
   const angle = arena.angleFromPointer(event, world.balls[slot]);
   if (angle === null) return;
   if (online) onlineAim?.setAngle(angle);
-  else {
-    localAngle = angle;
-    get<HTMLInputElement>('local-angle').value = String(Math.round(angle * 180 / Math.PI));
-    get('local-angle-value').textContent = `${Math.round(angle * 180 / Math.PI)}°`;
-    arena.setAimPreview(world, 0, angle);
-  }
+  else setLocalAngle(angle * 180 / Math.PI);
 }
 sceneElement.addEventListener('pointerdown', event => {
   if (!canPointAim()) return;

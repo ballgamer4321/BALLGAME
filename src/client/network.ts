@@ -9,7 +9,7 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
   const viewport = document.querySelector<HTMLElement>('.viewport')!;
   const overlay = document.createElement('section');
   overlay.id='selection-overlay';overlay.className='selection-overlay';overlay.hidden=true;overlay.setAttribute('aria-label','Wybór kulki przed rundą');
-  overlay.innerHTML=`<div class="selection-shell"><div class="selection-heading"><span class="eyebrow">PRZYGOTOWANIE RUNDY</span><h2>Wybierz swoją kulkę</h2><p>Trzy losowe propozycje. Raz na mecz możesz otworzyć wszystkie dostępne kulki.</p></div><div id="selection-players" class="selection-players"></div><div id="selection-tabs" class="selection-tabs"><button id="offer-tab" type="button">3 losowe kulki</button><button id="collection-tab" type="button">Moje kulki · raz na mecz</button></div><div id="selection-cards" class="selection-cards" role="group" aria-label="Kulki do wyboru"></div><div id="selection-aim" class="selection-aim"><label for="selection-angle">Kierunek startowy <output id="selection-angle-value">0°</output></label><input id="selection-angle" type="range" min="-180" max="180" value="0"><span>Możesz też wskazać kierunek na arenie.</span></div><div class="selection-bottom"><button id="confirm-selection" class="primary" type="button" disabled>Potwierdź kulkę i kierunek ↗</button><p id="selection-note" role="status">Walka zacznie się, gdy wszyscy gracze wybiorą kulki.</p></div></div>`;
+  overlay.innerHTML=`<div class="selection-shell"><div class="selection-heading"><span class="eyebrow">PRZYGOTOWANIE RUNDY</span><h2>Wybierz swoją kulkę</h2><p>Trzy losowe propozycje. Raz na mecz możesz otworzyć wszystkie dostępne kulki.</p></div><div id="selection-players" class="selection-players"></div><div id="selection-tabs" class="selection-tabs"><button id="offer-tab" type="button">3 losowe kulki</button><button id="collection-tab" type="button">Moje kulki · raz na mecz</button></div><div id="selection-cards" class="selection-cards" role="group" aria-label="Kulki do wyboru"></div><div id="selection-aim" class="selection-aim"><div class="direction-picker"><div class="direction-grid" id="selection-direction" role="group" aria-label="Ustaw kierunek startowy"><button type="button" data-angle="-135" aria-label="Góra lewo">↖</button><button type="button" data-angle="-90" aria-label="Góra">↑</button><button type="button" data-angle="-45" aria-label="Góra prawo">↗</button><button type="button" data-angle="180" aria-label="Lewo">←</button><i aria-hidden="true"></i><button type="button" data-angle="0" aria-label="Prawo" aria-pressed="true">→</button><button type="button" data-angle="135" aria-label="Dół lewo">↙</button><button type="button" data-angle="90" aria-label="Dół">↓</button><button type="button" data-angle="45" aria-label="Dół prawo">↘</button></div><div class="direction-copy"><strong>Kierunek: <output id="selection-angle-value">0°</output></strong><span>Przeciągnij po kompasie. Strzałkę zobaczysz na arenie.</span></div></div></div><div class="selection-bottom"><button id="confirm-selection" class="primary" type="button" disabled>Potwierdź kulkę i kierunek ↗</button><p id="selection-note" role="status">Walka zacznie się, gdy wszyscy gracze wybiorą kulki.</p></div></div>`;
   viewport.append(overlay);
   const pickEl=<T extends HTMLElement>(id:string)=>overlay.querySelector<T>('#'+id)!;
   const code = el<HTMLInputElement>('room-code');
@@ -33,12 +33,15 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
   let collectionView=false;
   let choicePending=false;
   let pickerError='';
-  const angleInput=pickEl<HTMLInputElement>('selection-angle');
+  const angleOutput=pickEl<HTMLOutputElement>('selection-angle-value');
+  let angleDegrees=0;
   const confirm=pickEl<HTMLButtonElement>('confirm-selection');
   function setAngleDegrees(degrees:number){
     const value=Math.max(-180,Math.min(180,Math.round(degrees)));
-    angleInput.value=String(value);
-    pickEl('selection-angle-value').textContent=`${value}°`;
+    angleDegrees=value;
+    angleOutput.textContent=`${value}°`;
+    pickEl('selection-direction').querySelectorAll<HTMLButtonElement>('[data-angle]').forEach(button=>
+      button.setAttribute('aria-pressed',String(Number(button.dataset.angle)===value)));
     onAimChange(value*Math.PI/180,currentSlot);
   }
   function renderPicker(){
@@ -187,7 +190,7 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
   pickEl('collection-tab').onclick=()=>{if(currentState?.collectionUsed)return;collectionView=true;selectedId=null;renderPicker();};
   confirm.onclick=()=>{
     if(!currentState || !canAim || choicePending)return;
-    const angle=Number(angleInput.value)*Math.PI/180;
+    const angle=angleDegrees*Math.PI/180;
     if(currentState.phase==='select'){
       if(!selectedId)return;
       choicePending=true;canAim=false;renderPicker();
@@ -197,7 +200,24 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     }
   };
   el('rematch').onclick = () => send({type:'rematch'});
-  angleInput.oninput=()=>{if(canAim)setAngleDegrees(Number(angleInput.value));};
+  pickEl('selection-direction').addEventListener('click',event=>{
+    const button=(event.target as HTMLElement).closest<HTMLButtonElement>('[data-angle]');
+    if(button && canAim)setAngleDegrees(Number(button.dataset.angle));
+  });
+  const directionPad=pickEl('selection-direction');
+  let directionPointer:number|null=null;
+  function pointDirection(event:PointerEvent){
+    const rect=directionPad.getBoundingClientRect();
+    const x=event.clientX-(rect.left+rect.width/2),y=event.clientY-(rect.top+rect.height/2);
+    if(canAim&&Math.hypot(x,y)>=8)setAngleDegrees(Math.atan2(y,x)*180/Math.PI);
+  }
+  directionPad.addEventListener('pointerdown',event=>{
+    if(!canAim)return;
+    directionPointer=event.pointerId;directionPad.setPointerCapture(event.pointerId);pointDirection(event);
+  });
+  directionPad.addEventListener('pointermove',event=>{if(directionPointer===event.pointerId)pointDirection(event);});
+  directionPad.addEventListener('pointerup',event=>{if(directionPointer===event.pointerId)directionPointer=null;});
+  directionPad.addEventListener('pointercancel',()=>{directionPointer=null;});
   if(sessionToken && !hosted)send({type:'resume',token:sessionToken});
   return { showMenu(){panel.hidden=false;el('mode-options').hidden=false;el('join-controls').hidden=!onlineConfigured;el('room-actions').hidden=true;}, leave(){leaving=true;send({type:'leave'});}, setAngle(angle: number) {
     if (!canAim) return;

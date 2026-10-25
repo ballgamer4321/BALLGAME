@@ -2,7 +2,7 @@
 
 Data ustaleń: 2026-10-21. Nazwa robocza autorskiej gry przeglądarkowej.
 
-Aktualizacja implementacji 2026-10-24: na życzenie użytkownika arena jest kwadratem 20 × 20, kulki mają promienie 1,15–1,22 i wyższe prędkości. Ostatnia poprawka podniosła bazowe szybkości o około 10–12% i zachowuje prędkość każdej kulki po zderzeniu (poza działaniem mocy). Etap 5 dodał osiem autorskich mocy opisanych w `src/shared/config.ts`; nazwy i parametry w poniższym pierwotnym planie nie są już bieżącym balansem. Aby walka była dynamiczniejsza, własny limit rundy wynosi 45 s, dogrywka zaczyna się po 30 s. Wybór kulki i kierunku czeka na decyzje graczy, bez automatycznego wyboru po czasie. Bieżące liczby definiuje kod i README.
+Aktualizacja implementacji 2026-10-24: na życzenie użytkownika arena jest kwadratem 20 × 20, promienie kulek wynoszą 1,35–1,42, a szybkości podniesiono o około 20% względem poprzedniego balansu. Odbicia zachowują prędkość każdej kulki (poza działaniem mocy). Etap 5 dodał osiem autorskich mocy opisanych w `src/shared/config.ts`; nazwy i parametry w poniższym pierwotnym planie nie są już bieżącym balansem. Aby walka była dynamiczniejsza, własny limit rundy wynosi 45 s, dogrywka zaczyna się po 30 s. Wybór kulki i kierunku czeka na decyzje graczy, bez automatycznego wyboru po czasie. Bieżące liczby definiuje kod i README.
 
 ## Zakres i sposób pracy
 
