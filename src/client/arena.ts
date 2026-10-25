@@ -1,7 +1,73 @@
 import * as THREE from 'three';
-import { BASIC_BALLS, RULES } from '../shared/config';
+import { BASIC_BALLS, MATCH_BALLS, RULES } from '../shared/config';
 import { COSMETICS } from '../shared/progression';
 import type { World } from '../simulation/world';
+
+interface EnergyStrip { group: THREE.Group; core: THREE.Mesh; glow: THREE.Mesh; }
+interface ProjectileVisual { orb: THREE.Mesh; streak: THREE.Mesh; }
+
+function makeEnergyStrip(): EnergyStrip {
+  const group = new THREE.Group();
+  const core = new THREE.Mesh(new THREE.BoxGeometry(1, 0.055, 0.11),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.96 }));
+  const glow = new THREE.Mesh(new THREE.BoxGeometry(1, 0.2, 0.42),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.32, depthWrite: false }));
+  group.add(glow, core);
+  return { group, core, glow };
+}
+
+function makeBallSignature(id: string, color: string) {
+  const group = new THREE.Group();
+  const metal = new THREE.MeshStandardMaterial({ color, metalness: 0.72, roughness: 0.26 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x253039, metalness: 0.82, roughness: 0.3 });
+  const add = (geometry: THREE.BufferGeometry, material: THREE.Material, position: [number, number, number], rotation: [number, number, number] = [0, 0, 0]) => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(...position); mesh.rotation.set(...rotation); mesh.castShadow = true; group.add(mesh);
+  };
+  if (id === 'beam') add(new THREE.CylinderGeometry(0.2, 0.3, 0.58, 10), metal, [0, 0.12, 0.93], [Math.PI / 2, 0, 0]);
+  if (id === 'laser') {
+    add(new THREE.ConeGeometry(0.15, 0.58, 6), metal, [-0.38, 0.55, 0.68], [0.2, 0, -0.42]);
+    add(new THREE.ConeGeometry(0.15, 0.58, 6), metal, [0.38, 0.55, 0.68], [0.2, 0, 0.42]);
+  }
+  if (id === 'machine') for (const x of [-0.23, 0.23]) {
+    add(new THREE.CylinderGeometry(0.09, 0.12, 0.64, 8), dark, [x, 0.08, 0.88], [Math.PI / 2, 0, 0]);
+    add(new THREE.CylinderGeometry(0.11, 0.11, 0.08, 8), metal, [x, 0.08, 1.19], [Math.PI / 2, 0, 0]);
+  }
+  if (id === 'cannon') {
+    add(new THREE.CylinderGeometry(0.23, 0.3, 0.7, 10), dark, [0, 0.16, 0.83], [Math.PI / 2, 0, 0]);
+    add(new THREE.CylinderGeometry(0.28, 0.28, 0.12, 10), metal, [0, 0.16, 1.13], [Math.PI / 2, 0, 0]);
+  }
+  if (id === 'spider') for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    add(new THREE.ConeGeometry(0.09, 0.72, 6), dark, [sx * 0.68, 0.1, sz * 0.54], [sz * 0.56, 0, -sx * 0.64]);
+  }
+  if (id === 'axe') {
+    add(new THREE.CylinderGeometry(0.055, 0.08, 0.76, 7), dark, [0.6, 0.34, 0.42], [0, 0, -0.55]);
+    add(new THREE.OctahedronGeometry(0.4, 0), metal, [0.77, 0.67, 0.55], [0, 0, -0.35]);
+  }
+  return group;
+}
+
+function makeWebVisual() {
+  const points: number[] = [];
+  const segment = (x1: number, z1: number, x2: number, z2: number) => points.push(x1, 0, z1, x2, 0, z2);
+  for (const radius of [0.28, 0.54, 0.78, 1]) {
+    const count = 24;
+    for (let i = 0; i < count; i++) {
+      const a = i / count * Math.PI * 2, b = (i + 1) / count * Math.PI * 2;
+      segment(Math.cos(a) * radius, Math.sin(a) * radius, Math.cos(b) * radius, Math.sin(b) * radius);
+    }
+  }
+  for (let i = 0; i < 8; i++) {
+    const angle = i / 8 * Math.PI * 2;
+    segment(0, 0, Math.cos(angle), Math.sin(angle));
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+  const material = new THREE.LineBasicMaterial({ color: 0xa9f775, transparent: true, opacity: 0.74 });
+  const group = new THREE.Group();
+  group.add(new THREE.LineSegments(geometry, material));
+  return group;
+}
 
 export class Arena {
   private renderer: THREE.WebGLRenderer;
@@ -17,7 +83,14 @@ export class Arena {
   private damageBubbles: { sprite: THREE.Sprite; life: number; rise: number }[] = [];
   private observer: ResizeObserver;
   private aimArrow: THREE.ArrowHelper;
-  private projectiles: THREE.Mesh[] = [];
+  private projectiles: ProjectileVisual[] = [];
+  private abilityGroups: (THREE.Group | null)[] = [];
+  private abilityIds: (string | null)[] = [];
+  private chargeCrystals: THREE.Mesh[] = [];
+  private beamStrips: EnergyStrip[] = [];
+  private laserStrips: EnergyStrip[] = [];
+  private webVisuals: THREE.Group[] = [];
+  private fxClock = 0;
   private lowEffects = false;
   private reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -82,6 +155,11 @@ export class Arena {
       const satellite = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8),
         new THREE.MeshBasicMaterial({ color: 0xff9dd5 }));
       satellite.visible = false; group.add(satellite);
+      const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.23, 0),
+        new THREE.MeshBasicMaterial({ color: 0x48eaff, transparent: true, opacity: 0.95 }));
+      crystal.position.set(0, 0.48, 1.24); crystal.visible = false; group.add(crystal);
+      this.chargeCrystals.push(crystal);
+      this.abilityGroups.push(null); this.abilityIds.push(null);
       this.balls.push(group); this.scene.add(group);
       const trail: THREE.Mesh[] = [];
       for (let i = 0; i < 12; i++) {
@@ -91,6 +169,13 @@ export class Arena {
       }
       this.trails.push(trail);
     });
+    for (let i = 0; i < 4; i++) {
+      const beam = makeEnergyStrip(); beam.group.visible = false; this.scene.add(beam.group); this.beamStrips.push(beam);
+    }
+    for (let i = 0; i < 10; i++) {
+      const laser = makeEnergyStrip(); laser.group.visible = false; this.scene.add(laser.group); this.laserStrips.push(laser);
+      const web = makeWebVisual(); web.visible = false; this.scene.add(web); this.webVisuals.push(web);
+    }
     this.observer = new ResizeObserver(() => this.resize());
     this.observer.observe(container);
     this.resize();
@@ -126,8 +211,9 @@ export class Arena {
       material.map?.dispose(); material.dispose();
     });
     this.damageBubbles = [];
-    this.projectiles.forEach(p => { this.scene.remove(p); p.geometry.dispose(); (p.material as THREE.Material).dispose(); });
-    this.projectiles = [];
+    this.projectiles.forEach(({ orb, streak }) => {
+      orb.visible = false; streak.visible = false;
+    });
   }
 
   setAimPreview(w: World, index: number, angle: number) {
@@ -166,6 +252,30 @@ export class Arena {
     if (this.cosmeticTints[index]) this.colorScratch.lerp(this.cosmeticTints[index], 0.18);
     (orb.material as THREE.MeshPhysicalMaterial).color.copy(this.colorScratch);
     for (const particle of this.trails[index]) (particle.material as THREE.MeshBasicMaterial).color.set(color);
+  }
+
+  setBallAbility(index: number, abilityId: string | null) {
+    const group = this.balls[index];
+    if (!group || this.abilityIds[index] === abilityId) return;
+    const previous = this.abilityGroups[index];
+    if (previous) {
+      group.remove(previous);
+      previous.traverse(object => {
+        if (object instanceof THREE.Mesh) {
+          object.geometry.dispose();
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          materials.forEach(material => material.dispose());
+        }
+      });
+    }
+    this.abilityIds[index] = abilityId;
+    this.chargeCrystals[index].visible = abilityId === 'beam';
+    if (!abilityId) { this.abilityGroups[index] = null; return; }
+    const definition = MATCH_BALLS.find(ball => ball.id === abilityId);
+    if (!definition) { this.abilityGroups[index] = null; return; }
+    const signature = makeBallSignature(definition.id, definition.color);
+    group.add(signature);
+    this.abilityGroups[index] = signature;
   }
 
   setBallCosmetic(index: number, cosmeticId: string) {
@@ -218,6 +328,7 @@ export class Arena {
   }
 
   render(w: World, alpha: number, delta: number, moving: boolean) {
+    this.fxClock += delta;
     w.balls.forEach((b, i) => {
       const p = this.previous[i] ?? b;
       const x = THREE.MathUtils.lerp(p.x, b.x, alpha), y = THREE.MathUtils.lerp(p.y, b.y, alpha);
@@ -226,6 +337,14 @@ export class Arena {
       const satellite = group.children[1] as THREE.Mesh;
       satellite.visible = b.echoUntil > w.tick;
       if (satellite.visible && !this.reducedMotion.matches) satellite.position.set(Math.cos(w.tick * 0.18) * b.radius * 1.5, 0.2, Math.sin(w.tick * 0.18) * b.radius * 1.5);
+      const charge = this.chargeCrystals[i];
+      charge.visible = b.abilityId === 'beam' && (b.beamChargeUntil > w.tick || b.beamUntil > w.tick);
+      if (charge.visible && !this.reducedMotion.matches) {
+        charge.rotation.y += delta * 3.6;
+        const pulse = 0.86 + Math.sin(this.fxClock * 12) * 0.18;
+        charge.scale.setScalar(pulse);
+        (charge.material as THREE.MeshBasicMaterial).color.set(b.beamUntil > w.tick ? '#ffffff' : '#48eaff');
+      }
       if (moving && !this.reducedMotion.matches) {
         group.rotation.x += b.vy * delta * 0.7;
         group.rotation.z -= b.vx * delta * 0.7;
@@ -259,12 +378,70 @@ export class Arena {
       return false;
     });
     while (this.projectiles.length < w.projectiles.length) {
-      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), new THREE.MeshBasicMaterial({ color: 0xff9566 }));
-      this.scene.add(mesh); this.projectiles.push(mesh);
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), new THREE.MeshBasicMaterial({ color: 0xff9566 }));
+      const streak = new THREE.Mesh(new THREE.BoxGeometry(1, 0.055, 0.055),
+        new THREE.MeshBasicMaterial({ color: 0xff9566, transparent: true, opacity: 0.72 }));
+      this.scene.add(orb, streak); this.projectiles.push({ orb, streak });
     }
-    this.projectiles.forEach((mesh, i) => {
-      mesh.visible = i < w.projectiles.length;
-      if (mesh.visible) mesh.position.set(w.projectiles[i].x, 0.35, w.projectiles[i].y);
+    this.projectiles.forEach(({ orb, streak }, i) => {
+      const shot = w.projectiles[i];
+      orb.visible = !!shot; streak.visible = !!shot && !this.lowEffects && !this.reducedMotion.matches;
+      if (shot) {
+        const radius = shot.radius ?? 0.22;
+        orb.position.set(shot.x, 0.35, shot.y); orb.scale.setScalar(radius);
+        (orb.material as THREE.MeshBasicMaterial).color.set(shot.color ?? '#ff9566');
+        const speed = Math.hypot(shot.vx, shot.vy) || 1;
+        streak.position.set(shot.x - shot.vx / speed * 0.34, 0.35, shot.y - shot.vy / speed * 0.34);
+        streak.rotation.y = -Math.atan2(shot.vy, shot.vx);
+        streak.scale.set(Math.max(0.55, Math.min(1.25, speed * 0.045)), 1, 1);
+        (streak.material as THREE.MeshBasicMaterial).color.set(shot.color ?? '#ff9566');
+      }
+    });
+
+    const updateStrip = (strip: EnergyStrip, color: string, opacity: number) => {
+      (strip.core.material as THREE.MeshBasicMaterial).color.set(color);
+      (strip.glow.material as THREE.MeshBasicMaterial).color.set(color);
+      (strip.core.material as THREE.MeshBasicMaterial).opacity = opacity;
+      (strip.glow.material as THREE.MeshBasicMaterial).opacity = opacity * 0.34;
+      strip.glow.visible = !this.lowEffects;
+    };
+    this.laserStrips.forEach((strip, i) => {
+      const laser = w.lasers[i];
+      strip.group.visible = !!laser;
+      if (!laser) return;
+      const pulse = 0.7 + Math.sin(this.fxClock * 14 + i) * 0.2;
+      const fade = Math.min(1, laser.ttl / 60);
+      strip.group.position.set(laser.axis === 'x' ? 0 : laser.at, 0.16, laser.axis === 'x' ? laser.at : 0);
+      strip.group.rotation.y = laser.axis === 'x' ? 0 : Math.PI / 2;
+      strip.group.scale.set(20, 1, 1);
+      updateStrip(strip, laser.color, pulse * fade);
+    });
+    this.webVisuals.forEach((webGroup, i) => {
+      const web = w.webs[i];
+      webGroup.visible = !!web;
+      if (!web) return;
+      webGroup.position.set(web.x, 0.055, web.y);
+      webGroup.scale.setScalar(web.radius);
+      webGroup.rotation.y = this.reducedMotion.matches ? 0 : Math.sin(this.fxClock * 1.7 + i) * 0.08;
+      const lines = webGroup.children[0] as THREE.LineSegments;
+      const material = lines.material as THREE.LineBasicMaterial;
+      material.color.set(web.color);
+      material.opacity = Math.min(0.78, web.ttl / 360) * (0.76 + Math.sin(this.fxClock * 8 + i) * 0.12);
+    });
+    this.beamStrips.forEach((strip, i) => {
+      const ball = w.balls[i];
+      const enemy = ball && w.balls.filter(candidate => candidate.hp > 0 && candidate.team !== ball.team)
+        .sort((a, b) => Math.hypot(a.x - ball.x, a.y - ball.y) - Math.hypot(b.x - ball.x, b.y - ball.y))[0];
+      const active = !!ball && !!enemy && ball.abilityId === 'beam' && ball.beamUntil > w.tick;
+      strip.group.visible = active;
+      if (!active || !ball || !enemy) return;
+      const dx = enemy.x - ball.x, dz = enemy.y - ball.y;
+      const length = Math.hypot(dx, dz);
+      strip.group.position.set((ball.x + enemy.x) / 2, 0.72, (ball.y + enemy.y) / 2);
+      strip.group.rotation.y = -Math.atan2(dz, dx);
+      strip.group.scale.set(length, 1, 1);
+      const pulse = 0.75 + Math.sin(this.fxClock * 25) * 0.22;
+      updateStrip(strip, '#48eaff', pulse);
     });
     this.renderer.render(this.scene, this.camera);
   }

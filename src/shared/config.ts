@@ -20,4 +20,10 @@ export const MATCH_BALLS = [
   { id: 'cyan', name: 'Szron', color: '#82e9f4', hp: 105, radius: 1.35, speed: 10.3, damage: 9, ability: 'Co 3 s spowalnia wroga w promieniu 7 o 50% na 2,5 s i zadaje 6 obrażeń.', trigger: 'czas' },
   { id: 'orange', name: 'Siewca', color: '#ff9566', hp: 95, radius: 1.35, speed: 10.1, damage: 9, ability: 'Odbicie od ściany wypuszcza pocisk za 7 obrażeń, co 4 s.', trigger: 'ściana' },
   { id: 'pink', name: 'Echo', color: '#ff9dd5', hp: 100, radius: 1.35, speed: 10.4, damage: 9, ability: 'Co 6 s tworzy satelitę na 2 s; bliski wróg traci 8 HP.', trigger: 'czas' },
+  { id: 'beam', name: 'Wiązka', color: '#48eaff', hp: 96, radius: 1.35, speed: 9.8, damage: 9, ability: 'Ładuje się, namierza wroga i przez sekundę tnie go wiązką.', trigger: 'czas' },
+  { id: 'laser', name: 'Laser', color: '#f05cff', hp: 98, radius: 1.35, speed: 10.2, damage: 8, ability: 'Po odbiciu zostawia laserową barierę przecinającą arenę.', trigger: 'ściana' },
+  { id: 'machine', name: 'Karabin', color: '#ff9ee8', hp: 92, radius: 1.32, speed: 10.8, damage: 8, ability: 'Co 1,15 s wysyła szybki pocisk w stronę najbliższego wroga.', trigger: 'czas' },
+  { id: 'cannon', name: 'Salwa', color: '#ff745d', hp: 108, radius: 1.4, speed: 9.3, damage: 9, ability: 'Odbicie od ściany wystrzeliwuje wachlarz trzech pocisków.', trigger: 'ściana' },
+  { id: 'spider', name: 'Pajęczak', color: '#a9f775', hp: 103, radius: 1.36, speed: 9.7, damage: 9, ability: 'Na ścianie rozkłada sieć, która rani i spowalnia przeciwnika.', trigger: 'ściana' },
+  { id: 'axe', name: 'Topór', color: '#dce5f2', hp: 105, radius: 1.38, speed: 9.6, damage: 9, ability: 'Każdy punkt utraconego HP wzmacnia kontakt aż o 12 obrażeń.', trigger: 'HP' },
 ] as const;

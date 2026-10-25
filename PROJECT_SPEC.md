@@ -119,3 +119,7 @@ Nie deklarować sukcesu testów przeglądarkowych na podstawie samych testów We
 ### Celowanie na ekranie (2026-10-25)
 
 Kierunek jest osobnym krokiem po wyborze kulki. Sterowanie przypomina opisywany w poradnikach do Ball VS Ball schemat: przeciągnij na arenie od swojej kulki, obserwuj strzałkę toru i zatwierdź przyciskiem „Zablokuj kierunek”. Oryginalna gra opisuje przeciąganie myszą i jawne „Lock Aim”; układ Orbity pozostaje własny i nie używa zasobów Roblox ([Bloxodes](https://bloxodes.com/wiki/ball-vs-ball), [How to Play Ball VS Ball](https://ballvsballcodes.org/how-to-play/)). Ta sama obsługa działa wskaźnikiem dotykowym, a strzałki klawiatury korygują kierunek co 15°. Lokalna i sieciowa ścieżka korzystają z tej samej projekcji wskaźnika na płaszczyznę areny.
+
+### Aktualizacja kulek i efektów (2026-10-25)
+
+Lista zawiera 14 własnych kulek. Sześć nowych ról to Wiązka (ładowany promień), Laser (czasowa bariera), Karabin (szybkie pociski), Salwa (wachlarz pocisków), Pajęczak (sieć z pułapką) i Topór (mocniejszy kontakt przy małej liczbie HP). Arena animuje promienie i bariery laserowe, wiązkę z celem, pulsujące sieci oraz smugi pocisków. Nowe ozdoby są przymocowane do modeli konkretnych kulek; na kulkach nie ma aureoli. Inspiracją są ogólne mechaniki laserów, działek i pułapek z Ball VS Ball, ale geometria, tekstury i parametry walki należą do Orbity. Starszy plan ośmiu kulek powyżej jest historyczny; aktualny katalog i balans są w `src/shared/config.ts`.

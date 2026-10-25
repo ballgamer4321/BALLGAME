@@ -81,6 +81,7 @@ function updateHud() {
   world.balls.forEach((b, i) => {
     const def = MATCH_BALLS.find(candidate => candidate.id === b.abilityId);
     if (def) arena.setBallColor(i, def.color);
+    arena.setBallAbility(i, b.abilityId);
   });
   for(let team=0;team<2;team++){
     const members=world.balls.filter(b=>b.team===team);

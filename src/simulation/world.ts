@@ -8,16 +8,19 @@ export interface Ball {
   abilityId: string | null; shield: number; shieldUntil: number;
   poisonedUntil: number; poisonTick: number; slowedUntil: number;
   dashUntil: number; dashArmed: boolean; echoUntil: number; echoHit: boolean;
-  abilityReadyAt: number;
+  abilityReadyAt: number; beamChargeUntil: number; beamUntil: number; beamNextDamageAt: number;
 }
 export interface BattleEvent { type: 'wall' | 'hit' | 'power' | 'beam' | 'shot' | 'damage'; x: number; y: number; color?: string; radius?: number; axis?: 'x' | 'y'; amount?: number; }
-export interface Projectile { x: number; y: number; vx: number; vy: number; owner: number; ttl: number; }
+export interface Projectile { x: number; y: number; vx: number; vy: number; owner: number; ttl: number; damage?: number; radius?: number; color?: string; }
+export interface LaserLine { axis: 'x' | 'y'; at: number; owner: number; color: string; ttl: number; nextHitAt: Record<string, number>; }
+export interface WebTrap { x: number; y: number; owner: number; radius: number; color: string; ttl: number; hitSlots: number[]; }
 export interface World {
   seed: number; tick: number; phase: 'running' | 'finished';
   balls: Ball[]; contacts: Set<string>; events: BattleEvent[];
   winner: string | null; reason: 'knockout' | 'timeout' | null;
   hits: number; collisionLimitHits: number;
   projectiles: Projectile[];
+  lasers: LaserLine[]; webs: WebTrap[];
 }
 
 export function createWorld(seed = 1, picks?: string[], angles?: number[]): World {
@@ -36,10 +39,10 @@ export function createWorld(seed = 1, picks?: string[], angles?: number[]): Worl
       abilityId: picks ? def.id : null, shield: 0, shieldUntil: 0,
       poisonedUntil: 0, poisonTick: 0, slowedUntil: 0,
       dashUntil: 0, dashArmed: false, echoUntil: 0, echoHit: false,
-      abilityReadyAt: 0 };
+      abilityReadyAt: 0, beamChargeUntil: 0, beamUntil: 0, beamNextDamageAt: 0 };
   });
   return { seed, tick: 0, phase: 'running', balls, contacts: new Set(),
-    events: [], winner: null, reason: null, hits: 0, collisionLimitHits: 0, projectiles: [] };
+    events: [], winner: null, reason: null, hits: 0, collisionLimitHits: 0, projectiles: [], lasers: [], webs: [] };
 }
 
 const EPS = 1e-9;
@@ -71,10 +74,35 @@ function activateWallPower(w: World, ball: Ball, axis: 'x' | 'y') {
     w.events.push({ type: 'beam', x: ball.x, y: ball.y, color: '#c3a0fa', axis });
   } else if (kind(ball) === 'orange') {
     ball.abilityReadyAt = w.tick + ticks(4);
-    const dx = enemy.x - ball.x, dy = enemy.y - ball.y;
-    const d = Math.hypot(dx, dy) || 1;
-    w.projectiles.push({ x: ball.x, y: ball.y, vx: dx / d * 15, vy: dy / d * 15, owner: w.balls.indexOf(ball), ttl: ticks(1.6) });
+    fireProjectiles(w, ball, enemy, { speed: 15, damage: 7, radius: 0.2, color: '#ff9566', ttl: 1.6 });
     w.events.push({ type: 'shot', x: ball.x, y: ball.y, color: '#ff9566' });
+  } else if (kind(ball) === 'laser') {
+    ball.abilityReadyAt = w.tick + ticks(3.3);
+    w.lasers.push({ axis, at: axis === 'x' ? ball.y : ball.x, owner: w.balls.indexOf(ball), color: '#f05cff', ttl: ticks(8), nextHitAt: {} });
+    if (w.lasers.length > 10) w.lasers.shift();
+    w.events.push({ type: 'beam', x: ball.x, y: ball.y, color: '#f05cff', axis });
+  } else if (kind(ball) === 'spider') {
+    ball.abilityReadyAt = w.tick + ticks(3.6);
+    w.webs.push({ x: ball.x, y: ball.y, owner: w.balls.indexOf(ball), radius: 2.8, color: '#a9f775', ttl: ticks(7), hitSlots: [] });
+    if (w.webs.length > 10) w.webs.shift();
+    w.events.push({ type: 'power', x: ball.x, y: ball.y, color: '#a9f775', radius: 2.8 });
+  } else if (kind(ball) === 'cannon') {
+    ball.abilityReadyAt = w.tick + ticks(3.4);
+    fireProjectiles(w, ball, enemy, { speed: 13.5, damage: 4, radius: 0.24, color: '#ff745d', ttl: 1.8, spread: 0.2, count: 3 });
+    w.events.push({ type: 'shot', x: ball.x, y: ball.y, color: '#ff745d' });
+  }
+}
+
+function fireProjectiles(w: World, ball: Ball, enemy: Ball, options: { speed: number; damage: number; radius: number; color: string; ttl: number; spread?: number; count?: number }) {
+  const dx = enemy.x - ball.x, dy = enemy.y - ball.y;
+  const angle = Math.atan2(dy, dx), count = options.count ?? 1, spread = options.spread ?? 0;
+  const owner = w.balls.indexOf(ball);
+  for (let shot = 0; shot < count && w.projectiles.length < 32; shot++) {
+    const offset = count === 1 ? 0 : (shot - (count - 1) / 2) * spread;
+    const heading = angle + offset;
+    w.projectiles.push({ x: ball.x, y: ball.y, vx: Math.cos(heading) * options.speed,
+      vy: Math.sin(heading) * options.speed, owner, ttl: ticks(options.ttl),
+      damage: options.damage, radius: options.radius, color: options.color });
   }
 }
 
@@ -116,8 +144,9 @@ function resolvePair(w: World, a: Ball, b: Ball) {
   if (!w.contacts.has(key)) {
     w.contacts.add(key);
     // Resolve damage simultaneously, including a possible double knockout.
-    const aDamage = a.damage + (a.dashArmed ? 8 : 0);
-    const bDamage = b.damage + (b.dashArmed ? 8 : 0);
+    const axeBonus = (ball: Ball) => kind(ball) === 'axe' ? Math.floor(12 * (1 - ball.hp / ball.maxHp)) : 0;
+    const aDamage = a.damage + (a.dashArmed ? 8 : 0) + axeBonus(a);
+    const bDamage = b.damage + (b.dashArmed ? 8 : 0) + axeBonus(b);
     if (a.team !== b.team) { damage(w, a, bDamage); damage(w, b, aDamage); }
     if (a.team !== b.team) {
       if (a.dashArmed) a.dashArmed = false;
@@ -215,6 +244,26 @@ function timedPowers(w: World) {
     }
     const enemy = other(w, ball);
     if (!enemy) continue;
+    if (kind(ball) === 'beam') {
+      if (ball.beamChargeUntil && w.tick >= ball.beamChargeUntil) {
+        ball.beamChargeUntil = 0;
+        ball.beamUntil = w.tick + ticks(1.05);
+        ball.beamNextDamageAt = w.tick;
+        w.events.push({ type: 'beam', x: ball.x, y: ball.y, color: '#48eaff' });
+      }
+      if (ball.beamUntil > w.tick) {
+        if (w.tick >= ball.beamNextDamageAt) {
+          damage(w, enemy, 4, '#48eaff');
+          ball.beamNextDamageAt = w.tick + ticks(0.24);
+        }
+        continue;
+      }
+      if (ball.beamChargeUntil || w.tick < ball.abilityReadyAt) continue;
+      ball.beamChargeUntil = w.tick + ticks(0.82);
+      ball.abilityReadyAt = w.tick + ticks(5.8);
+      w.events.push({ type: 'power', x: ball.x, y: ball.y, color: '#48eaff', radius: 1.8 });
+      continue;
+    }
     if (kind(ball) === 'pink' && ball.echoUntil > w.tick && !ball.echoHit &&
         Math.hypot(enemy.x - ball.x, enemy.y - ball.y) < 3) {
       ball.echoHit = true;
@@ -251,8 +300,45 @@ function timedPowers(w: World) {
         ball.echoUntil = w.tick + ticks(2); ball.echoHit = false;
         w.events.push({ type: 'power', x: ball.x, y: ball.y, color: '#ff9dd5', radius: 2 });
         break;
+      case 'machine':
+        ball.abilityReadyAt = w.tick + ticks(1.15);
+        fireProjectiles(w, ball, enemy, { speed: 19, damage: 4, radius: 0.17, color: '#ff9ee8', ttl: 1.25 });
+        w.events.push({ type: 'shot', x: ball.x, y: ball.y, color: '#ff9ee8' });
+        break;
     }
   }
+}
+
+function updateArenaHazards(w: World) {
+  w.lasers = w.lasers.filter(laser => {
+    laser.ttl--;
+    for (let slot = 0; slot < w.balls.length; slot++) {
+      const enemy = w.balls[slot];
+      if (enemy.hp <= 0 || enemy.team === w.balls[laser.owner]?.team) continue;
+      const distance = laser.axis === 'x' ? Math.abs(enemy.y - laser.at) : Math.abs(enemy.x - laser.at);
+      if (distance > enemy.radius + 0.15 || (laser.nextHitAt[String(slot)] ?? 0) > w.tick) continue;
+      damage(w, enemy, 4, laser.color);
+      laser.nextHitAt[String(slot)] = w.tick + ticks(1.15);
+    }
+    return laser.ttl > 0 && !!w.balls[laser.owner];
+  });
+  w.webs = w.webs.filter(web => {
+    web.ttl--;
+    for (let slot = 0; slot < w.balls.length; slot++) {
+      const enemy = w.balls[slot];
+      if (enemy.hp <= 0 || enemy.team === w.balls[web.owner]?.team || web.hitSlots.includes(slot) ||
+          Math.hypot(enemy.x - web.x, enemy.y - web.y) > web.radius + enemy.radius * 0.35) continue;
+      web.hitSlots.push(slot);
+      if (enemy.slowedUntil <= w.tick) {
+        enemy.vx *= 0.5; enemy.vy *= 0.5;
+        enemy.slowedUntil = w.tick + ticks(1.5);
+      } else {
+        enemy.slowedUntil = Math.max(enemy.slowedUntil, w.tick + ticks(1.5));
+      }
+      damage(w, enemy, 6, web.color);
+    }
+    return web.ttl > 0 && !!w.balls[web.owner];
+  });
 }
 
 function moveProjectiles(w: World) {
@@ -264,8 +350,8 @@ function moveProjectiles(w: World) {
     const dx = shot.x - x, dy = shot.y - y;
     for(const enemy of enemies){
       const t = Math.max(0, Math.min(1, ((enemy.x - x) * dx + (enemy.y - y) * dy) / (dx * dx + dy * dy || 1)));
-      if (Math.hypot(enemy.x - (x + t * dx), enemy.y - (y + t * dy)) <= enemy.radius + 0.2) {
-        damage(w, enemy, 7, '#ff9566'); return false;
+      if (Math.hypot(enemy.x - (x + t * dx), enemy.y - (y + t * dy)) <= enemy.radius + (shot.radius ?? 0.2)) {
+        damage(w, enemy, shot.damage ?? 7, shot.color ?? '#ff9566'); return false;
       }
     }
     return shot.ttl > 0 && Math.abs(shot.x) <= RULES.width / 2 && Math.abs(shot.y) <= RULES.height / 2;
@@ -279,6 +365,7 @@ export function stepWorld(w: World): void {
   integrate(w);
   w.tick++;
   timedPowers(w);
+  updateArenaHazards(w);
   moveProjectiles(w);
   if (w.tick > RULES.overtimeTick) {
     const damage = (4 + (w.tick - RULES.overtimeTick) * RULES.step * 0.6) * RULES.step;

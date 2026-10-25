@@ -7,10 +7,10 @@ const advance = (world: ReturnType<typeof duel>, count: number) => {
   for (let i = 0; i < count && world.phase === 'running'; i++) stepWorld(world);
 };
 
-describe('eight distinct ball abilities', () => {
+describe('fourteen distinct ball abilities', () => {
   it('all definitions describe a trigger and a different power', () => {
-    expect(MATCH_BALLS).toHaveLength(8);
-    expect(new Set(MATCH_BALLS.map(ball => ball.ability)).size).toBe(8);
+    expect(MATCH_BALLS).toHaveLength(14);
+    expect(new Set(MATCH_BALLS.map(ball => ball.ability)).size).toBe(14);
     expect(MATCH_BALLS.every(ball => ball.trigger && ball.ability)).toBe(true);
   });
 
@@ -116,6 +116,83 @@ describe('eight distinct ball abilities', () => {
     expect(b.hp).toBe(b.maxHp - 8);
     advance(world, 121);
     expect(a.echoUntil).toBeLessThanOrEqual(world.tick);
+  });
+
+  it('Wiązka charges, turns on, and repeatedly damages its target', () => {
+    const world = duel('beam', 'jade');
+    const [a, b] = world.balls;
+    stepWorld(world);
+    expect(a.beamChargeUntil).toBeGreaterThan(world.tick);
+    a.x = -5; b.x = 5; a.y = b.y = 0;
+    a.vx = a.vy = b.vx = b.vy = 0;
+    let beamActivated = false;
+    for (let i = 0; i < 50; i++) {
+      stepWorld(world);
+      beamActivated ||= world.events.some(event => event.type === 'beam' && event.color === '#48eaff');
+    }
+    expect(a.beamUntil).toBeGreaterThan(world.tick);
+    expect(b.hp).toBeLessThan(b.maxHp);
+    expect(beamActivated).toBe(true);
+  });
+
+  it('Laser leaves a damaging barrier that expires', () => {
+    const world = duel('laser', 'jade');
+    const [a, b] = world.balls;
+    a.x = RULES.width / 2 - a.radius - 0.01; a.y = 0; a.vx = 8; a.vy = 0;
+    b.x = 5.5; b.y = 0; b.vx = b.vy = 0;
+    stepWorld(world);
+    expect(world.lasers).toHaveLength(1);
+    expect(world.lasers[0].axis).toBe('x');
+    expect(b.hp).toBe(b.maxHp - 4);
+    a.x = -5; b.x = 5.5; a.vx = a.vy = b.vx = b.vy = 0;
+    advance(world, 480);
+    expect(world.lasers).toHaveLength(0);
+  });
+
+  it('Karabin fires rapid, colored projectiles which hit the opponent', () => {
+    const world = duel('machine', 'jade');
+    const [a, b] = world.balls;
+    stepWorld(world);
+    expect(world.projectiles[0]).toMatchObject({ damage: 4, color: '#ff9ee8' });
+    a.x = -5; b.x = 5; a.y = b.y = 0;
+    a.vx = a.vy = b.vx = b.vy = 0;
+    advance(world, 30);
+    expect(b.hp).toBeLessThan(b.maxHp);
+  });
+
+  it('Salwa fires a three-projectile spread at a wall bounce', () => {
+    const world = duel('cannon', 'jade');
+    const [a, b] = world.balls;
+    a.x = RULES.width / 2 - a.radius - 0.01; a.y = 0; a.vx = 8; a.vy = 0;
+    b.x = 5.5; b.y = 0; b.vx = b.vy = 0;
+    stepWorld(world);
+    expect(world.projectiles).toHaveLength(3);
+    expect(world.projectiles.every(shot => shot.damage === 4 && shot.color === '#ff745d')).toBe(true);
+    expect(new Set(world.projectiles.map(shot => Math.round(Math.atan2(shot.vy, shot.vx) * 100))).size).toBe(3);
+  });
+
+  it('Pajęczak web slows once and restores exact speed', () => {
+    const world = duel('spider', 'jade');
+    const [a, b] = world.balls;
+    a.x = RULES.width / 2 - a.radius - 0.01; a.y = 0; a.vx = 8; a.vy = 0;
+    b.x = 5.5; b.y = 0; b.vx = 6; b.vy = 0;
+    stepWorld(world);
+    expect(world.webs).toHaveLength(1);
+    expect(b.slowedUntil).toBeGreaterThan(world.tick);
+    expect(b.vx).toBeCloseTo(3);
+    a.x = -8; a.vx = a.vy = 0;
+    advance(world, 90);
+    expect(Math.abs(b.vx)).toBeCloseTo(6);
+  });
+
+  it('Topór contact damage grows as its health falls', () => {
+    const world = duel('axe', 'jade');
+    const [a, b] = world.balls;
+    a.hp = 50;
+    a.x = -a.radius; b.x = b.radius; a.y = b.y = 0;
+    a.vx = 1; b.vx = -1; a.vy = b.vy = 0;
+    stepWorld(world);
+    expect(b.hp).toBe(b.maxHp - 15);
   });
 
   it('every pair finishes within the limit without invalid physics', () => {
