@@ -4,7 +4,7 @@ Projekt: `C:\Users\antre\Desktop\ball game`; GitHub `https://github.com/ballgame
 
 ## Stan
 
-Etapy 1–6 i 8–9 są DONE. Etap 7 (oprawa i telefony) pozostaje IN_PROGRESS, bo nie wykonano jeszcze ręcznego QA 360×800/landscape i pomiaru FPS. Ostatnia poprawka: ekran końca meczu pokazuje HP oraz skład obu stron, HUD ogranicza koszt częstych aktualizacji, a metadane i favicon zostały odświeżone. Three.js jest osobnym chunkiem. Kod przechodzi testy i build; publikacja tej poprawki trwa. Nie obchodź blokady narzędzia przeglądarki innym sterowaniem.
+Etapy 1–6 i 8–9 są DONE. Etap 7 (oprawa i telefony) pozostaje IN_PROGRESS, bo brakuje ręcznego QA 360×800/landscape i pomiaru FPS. Ostatni polish pokazał pozostałe HP i skład obu stron na ekranie wyniku, ograniczył koszt aktualizacji HUD, odświeżył metadane/favicon i rozdzielił bundel Three.js. Poprawka jest na GitHub `main`, a production Vercel jest READY. HTTP: strona 200, `/api/room` `online:true`, oba chunki JS 200. Nie obchodź blokady narzędzia przeglądarki innym sterowaniem.
 
 ## Uruchomienie i weryfikacja
 
@@ -17,18 +17,17 @@ Node.js: `C:\Users\antre\.cache\codex-runtimes\codex-primary-runtime\dependencie
 - Serwer: `node node_modules/tsx/dist/cli.mjs src/server/index.ts`
 - Lokalny adres: `http://127.0.0.1:5173/`
 
-W PowerShell, jeśli `node` nie jest dostępne, poprzedź każdą komendę pełną ścieżką do `node.exe` powyżej.
+W PowerShell, jeśli `node` nie jest w PATH, poprzedź każdą komendę pełną ścieżką do `node.exe` powyżej.
 
-## Pliki i dalsze kroki
+## Pliki i następne działania
 
-- `src/client/main.ts` — flow, HUD, wyniki i połączenie.
-- `src/client/arena.ts` — scena Three.js; `src/client/style.css` — UI i responsywność.
-- `src/simulation/world.ts`, `src/server/rooms.ts`, `tests/` — symulacja, multiplayer i scenariusze.
-- `PROGRESS.md` — aktualny status.
+- `src/client/main.ts` — flow, HUD, wyniki; `src/client/arena.ts` — Three.js; `src/client/style.css` — UI/responsywność.
+- `src/simulation/world.ts`, `src/server/rooms.ts`, `tests/` — symulacja, multiplayer, scenariusze.
+- `PROGRESS.md` — status etapów i aktualne wyniki.
 
-1. Opublikować bieżący kod na GitHub `main` (użytkownik wcześniej jawnie zlecił publikację) i upewnić się, że tree odpowiada lokalnej wersji.
-2. Sprawdzić automatyczny deploy Vercel: READY, alias produkcyjny i HTTP 200; zweryfikować `/api/room` jako `online:true`.
-3. Zaktualizować `PROGRESS.md` wynikiem publikacji.
-4. Wrócić do brakującego ręcznego QA etapu 7, jeśli polityka narzędzia pozwoli.
+1. Sprawdzić, czy pliki postępu są zsynchronizowane z GitHub po ostatnim opisie READY.
+2. Gdy dostępna będzie dozwolona ścieżka, wykonać wizualne QA etapu 7 na 360×800 i w landscape.
+3. Zmierzyć FPS WebGL na słabszym sprzęcie albo jawnie zostawić wynik jako niewykonany.
+4. Zaktualizować status etapu 7 dopiero po spełnieniu kryteriów.
 
-Ostatnie testy przed publikacją: 48/48; TypeScript; Vite build; diff check — OK. Obraz przeglądarki i FPS nie zostały ręcznie sprawdzone.
+Ostatnie testy: 48/48; TypeScript; Vite build; diff check — OK. Ręczny obraz i FPS nie zostały sprawdzone.
