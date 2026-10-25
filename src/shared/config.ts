@@ -25,5 +25,5 @@ export const MATCH_BALLS = [
   { id: 'machine', name: 'Karabin', color: '#ff9ee8', hp: 92, radius: 1.32, speed: 10.8, damage: 8, ability: 'Co 1,15 s wysyła szybki pocisk w stronę najbliższego wroga.', trigger: 'czas' },
   { id: 'cannon', name: 'Salwa', color: '#ff745d', hp: 108, radius: 1.4, speed: 9.3, damage: 9, ability: 'Odbicie od ściany wystrzeliwuje wachlarz trzech pocisków.', trigger: 'ściana' },
   { id: 'spider', name: 'Pajęczak', color: '#a9f775', hp: 103, radius: 1.36, speed: 9.7, damage: 9, ability: 'Na ścianie rozkłada sieć, która rani i spowalnia przeciwnika.', trigger: 'ściana' },
-  { id: 'axe', name: 'Topór', color: '#dce5f2', hp: 105, radius: 1.38, speed: 9.6, damage: 9, ability: 'Każdy punkt utraconego HP wzmacnia kontakt aż o 12 obrażeń.', trigger: 'HP' },
+  { id: 'axe', name: 'Topór', color: '#dce5f2', hp: 105, radius: 1.38, speed: 9.6, damage: 9, ability: 'Topór krąży wokół kulki; im mniej HP, tym szybciej się obraca i mocniej uderza.', trigger: 'HP' },
 ] as const;

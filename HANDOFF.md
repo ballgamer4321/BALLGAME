@@ -4,7 +4,7 @@ Projekt: `C:\Users\antre\Desktop\ball game`; GitHub `https://github.com/ballgame
 
 ## Stan
 
-Etapy 1–6 i 8–9: DONE. Etap 7 pozostaje IN_PROGRESS — brak ręcznego QA 360×800/landscape i pomiaru FPS. Modele wszystkich 14 kulek zostały poprawione i wdrożone. Topór ma czytelny drewniany trzonek, szerokie metalowe ostrze i krawędź tnącą; pozostałe kulki mają własne dodatki rozpoznawalne po sylwetce. Broń jest animowana zamiast pulsujących aureoli. Produkcja READY; strona i API 1v1 odpowiadają poprawnie. Ręcznego obrazu nie sprawdzono.
+Etapy 1–6 i 8–9: DONE. Etap 7 pozostaje IN_PROGRESS — brak ręcznego QA 360×800/landscape i pomiaru FPS. Modele wszystkich 14 kulek zostały poprawione i wdrożone. Topór ma wyraźny drewniany trzonek, zakrzywione metalowe ostrze z jasną krawędzią i krąży wokół kulki; obraca się szybciej przy niskim HP, tak jak w Robloxowej inspiracji. Pozostałe kulki mają własne dodatki rozpoznawalne po sylwetce. Broń jest animowana zamiast pulsujących aureoli. Produkcja READY; strona i API 1v1 odpowiadają poprawnie. Ręcznego obrazu nie sprawdzono.
 
 ## Uruchomienie i weryfikacja
 
@@ -26,4 +26,4 @@ W PowerShell, gdy `node` nie jest w PATH, poprzedź komendy pełną ścieżką d
 - `src/simulation/world.ts`, `src/server/rooms.ts`, `tests/` — symulacja i multiplayer.
 - Gdy będzie dostępna dozwolona ścieżka: sprawdzić modele wizualnie na 360×800 i landscape, zmierzyć FPS, potem ocenić etap 7.
 
-Ostatnie testy: 48/48; TypeScript; Vite build; diff check — OK. Manualne QA/FPS nadal niewykonane. Nie omijać blokady lokalnej karty innym sterowaniem.
+Ostatnie testy: 48/48 (przed obecną poprawką); TypeScript, Vite build i diff check dla poprawki topora — OK, chunk Three.js 497,65 kB bez ostrzeżenia. Manualne QA/FPS nadal niewykonane. Nie omijać blokady lokalnej karty innym sterowaniem.

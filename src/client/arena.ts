@@ -67,6 +67,24 @@ function makeExtrudedPolygonGeometry(points: readonly [number, number][], depth:
   return geometry;
 }
 
+function makeAxeHeadGeometry() {
+  const points: [number, number][] = [[-0.08, -0.19], [-0.34, -0.27], [-0.57, -0.43]];
+  const curve = (start: [number, number], control: [number, number], end: [number, number]) => {
+    for (let step = 1; step <= 8; step++) {
+      const t = step / 8, inverse = 1 - t;
+      points.push([
+        inverse * inverse * start[0] + 2 * inverse * t * control[0] + t * t * end[0],
+        inverse * inverse * start[1] + 2 * inverse * t * control[1] + t * t * end[1],
+      ]);
+    }
+  };
+  curve([-0.57, -0.43], [-0.96, -0.55], [-1.14, -0.25]);
+  curve([-1.14, -0.25], [-1.34, 0], [-1.14, 0.25]);
+  curve([-1.14, 0.25], [-0.96, 0.55], [-0.57, 0.43]);
+  points.push([-0.34, 0.27], [-0.08, 0.19]);
+  return makeExtrudedPolygonGeometry(points, 0.14);
+}
+
 function makeBallSignature(id: string, color: string) {
   const group = new THREE.Group();
   const accent = new THREE.MeshStandardMaterial({ color, metalness: 0.72, roughness: 0.24, emissive: color, emissiveIntensity: 0.08 });
@@ -193,29 +211,54 @@ function makeBallSignature(id: string, color: string) {
     }
   }
   if (id === 'axe') {
-    const start = new THREE.Vector3(0.38, 0.14, 0.28);
-    const end = new THREE.Vector3(0.82, 0.14, 1.52);
-    addCylinderBetween(group, start, end, 0.075, 0.09, wood, 10);
+    const start = new THREE.Vector3(0.19, 0.14, 0.98);
+    const end = new THREE.Vector3(0.56, 0.14, 1.86);
+    addCylinderBetween(group, start, end, 0.078, 0.105, wood, 12);
     const direction = end.clone().sub(start).normalize();
     const haftAxis = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
-    for (const t of [0.16, 0.87]) {
-      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.102, 0.102, 0.075, 10), steel);
+    for (const t of [0.12, 0.2, 0.28]) {
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.086, 0.086, 0.038, 10), dark);
       band.position.copy(start).lerp(end, t); band.quaternion.copy(haftAxis); band.castShadow = true; group.add(band);
     }
-    const bladePoints: [number, number][] = [
-      [0.13, -0.2], [-0.28, -0.27], [-0.62, -0.43], [-0.9, -0.38], [-1.08, -0.15],
-      [-1.18, 0.02], [-1.1, 0.2], [-0.9, 0.42], [-0.62, 0.44], [-0.38, 0.36], [0.13, 0.18],
-    ];
     const blade = new THREE.Group();
-    blade.position.copy(end); blade.rotation.x = Math.PI / 2; group.add(blade);
-    const head = new THREE.Mesh(makeExtrudedPolygonGeometry(bladePoints, 0.16), steel);
+    blade.position.copy(end);
+    blade.rotation.set(Math.PI / 2, Math.atan2(direction.x, direction.z), 0);
+    group.add(blade);
+
+    const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.2, 12), steel);
+    socket.position.copy(end).addScaledVector(direction, -0.06);
+    socket.quaternion.copy(haftAxis); socket.castShadow = true; group.add(socket);
+
+    const shadow = new THREE.Mesh(makeAxeHeadGeometry(), dark);
+    shadow.scale.set(1.06, 1.06, 1);
+    shadow.position.z = 0.035;
+    shadow.castShadow = true; blade.add(shadow);
+    const head = new THREE.Mesh(makeAxeHeadGeometry(), steel);
     head.castShadow = true; head.receiveShadow = true; blade.add(head);
-    const edgeGeometry = new THREE.BufferGeometry();
-    edgeGeometry.setFromPoints([
-      new THREE.Vector3(-1.08, -0.15, 0.09), new THREE.Vector3(-1.18, 0.02, 0.09), new THREE.Vector3(-1.1, 0.2, 0.09),
-    ]);
+
+    const edgePoints = [
+      ...Array.from({ length: 9 }, (_, step) => {
+        const t = step / 8, inverse = 1 - t;
+        return new THREE.Vector3(
+          inverse * inverse * -0.57 + 2 * inverse * t * -0.96 + t * t * -1.14,
+          inverse * inverse * -0.43 + 2 * inverse * t * -0.55 + t * t * -0.25, -0.045);
+      }),
+      ...Array.from({ length: 8 }, (_, index) => {
+        const t = (index + 1) / 8, inverse = 1 - t;
+        return new THREE.Vector3(
+          inverse * inverse * -1.14 + 2 * inverse * t * -1.34 + t * t * -1.14,
+          inverse * inverse * -0.25 + t * t * 0.25, -0.045);
+      }),
+      ...Array.from({ length: 8 }, (_, index) => {
+        const t = (index + 1) / 8, inverse = 1 - t;
+        return new THREE.Vector3(
+          inverse * inverse * -1.14 + 2 * inverse * t * -0.96 + t * t * -0.57,
+          inverse * inverse * 0.25 + 2 * inverse * t * 0.55 + t * t * 0.43, -0.045);
+      }),
+    ];
+    const edgeGeometry = new THREE.BufferGeometry().setFromPoints(edgePoints);
     blade.add(new THREE.Line(edgeGeometry, new THREE.LineBasicMaterial({ color: 0xf7fbff })));
-    add(new THREE.SphereGeometry(0.075, 10, 8), steel, [start.x - 0.04, start.y, start.z - 0.08]);
+    add(new THREE.SphereGeometry(0.09, 12, 10), dark, [start.x, start.y, start.z]);
   }
   return group;
 }
@@ -265,6 +308,7 @@ export class Arena {
   private laserStrips: EnergyStrip[] = [];
   private webVisuals: THREE.Group[] = [];
   private fxClock = 0;
+  private axeAngles = [0, 0, 0, 0];
   private lowEffects = false;
   private reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -539,9 +583,13 @@ export class Arena {
           signature.rotation.y = Math.atan2(target.x - x, target.y - y);
         if (!this.reducedMotion.matches) {
           const spinRate: Record<string, number> = {
-            amber: 0.7, jade: 0.52, violet: 0.9, gold: 1.35, cyan: 0.72, pink: 0.9, laser: 0.85, axe: 3.4,
+            amber: 0.7, jade: 0.52, violet: 0.9, gold: 1.35, cyan: 0.72, pink: 0.9, laser: 0.85,
           };
-          if (spinRate[b.abilityId ?? '']) signature.rotation.y = this.fxClock * spinRate[b.abilityId ?? ''];
+          if (b.abilityId === 'axe') {
+            const lostHp = Math.max(0, 1 - b.hp / b.maxHp);
+            this.axeAngles[i] += effectDelta * (4 + lostHp * 7.5);
+            signature.rotation.y = this.axeAngles[i];
+          } else if (spinRate[b.abilityId ?? '']) signature.rotation.y = this.fxClock * spinRate[b.abilityId ?? ''];
           if (b.abilityId === 'spider') {
             signature.rotation.y = this.fxClock * 0.32;
             signature.children.forEach(leg => {
