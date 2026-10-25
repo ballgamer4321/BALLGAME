@@ -20,52 +20,202 @@ function makeEnergyStrip(): EnergyStrip {
   return { group, core, glow, marker };
 }
 
+function addCylinderBetween(group: THREE.Group, start: THREE.Vector3, end: THREE.Vector3,
+  radiusStart: number, radiusEnd: number, material: THREE.Material, segments = 10) {
+  const direction = end.clone().sub(start);
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radiusEnd, radiusStart, direction.length(), segments), material);
+  mesh.position.copy(start).add(end).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+  mesh.castShadow = true;
+  group.add(mesh);
+  return mesh;
+}
+
+function makeExtrudedPolygonGeometry(points: readonly [number, number][], depth: number) {
+  const geometry = new THREE.BufferGeometry();
+  const center: [number, number] = [
+    points.reduce((sum, point) => sum + point[0], 0) / points.length,
+    points.reduce((sum, point) => sum + point[1], 0) / points.length,
+  ];
+  const area = points.reduce((sum, point, index) => {
+    const next = points[(index + 1) % points.length];
+    return sum + point[0] * next[1] - next[0] * point[1];
+  }, 0);
+  const positions: number[] = [];
+  const triangle = (a: [number, number, number], b: [number, number, number], c: [number, number, number]) => positions.push(...a, ...b, ...c);
+  const front = depth / 2, back = -depth / 2;
+  points.forEach((point, index) => {
+    const next = points[(index + 1) % points.length];
+    const a: [number, number, number] = [point[0], point[1], front];
+    const b: [number, number, number] = [next[0], next[1], front];
+    const aBack: [number, number, number] = [point[0], point[1], back];
+    const bBack: [number, number, number] = [next[0], next[1], back];
+    const centerFront: [number, number, number] = [center[0], center[1], front];
+    const centerBack: [number, number, number] = [center[0], center[1], back];
+    if (area < 0) {
+      triangle(centerFront, a, b);
+      triangle(centerBack, bBack, aBack);
+    } else {
+      triangle(centerFront, b, a);
+      triangle(centerBack, aBack, bBack);
+    }
+    triangle(a, aBack, bBack);
+    triangle(a, bBack, b);
+  });
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function makeBallSignature(id: string, color: string) {
   const group = new THREE.Group();
-  const metal = new THREE.MeshStandardMaterial({ color, metalness: 0.72, roughness: 0.26 });
+  const accent = new THREE.MeshStandardMaterial({ color, metalness: 0.72, roughness: 0.24, emissive: color, emissiveIntensity: 0.08 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x253039, metalness: 0.82, roughness: 0.3 });
+  const steel = new THREE.MeshStandardMaterial({ color: 0xcbd6df, metalness: 0.92, roughness: 0.2 });
+  const wood = new THREE.MeshStandardMaterial({ color: 0x684626, metalness: 0.12, roughness: 0.72 });
   const add = (geometry: THREE.BufferGeometry, material: THREE.Material, position: [number, number, number], rotation: [number, number, number] = [0, 0, 0]) => {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(...position); mesh.rotation.set(...rotation); mesh.castShadow = true; group.add(mesh);
     return mesh;
   };
-  if (id === 'beam') add(new THREE.CylinderGeometry(0.2, 0.3, 0.58, 10), metal, [0, 0.12, 0.93], [Math.PI / 2, 0, 0]);
-  if (id === 'laser') {
-    add(new THREE.ConeGeometry(0.15, 0.58, 6), metal, [-0.38, 0.55, 0.68], [0.2, 0, -0.42]);
-    add(new THREE.ConeGeometry(0.15, 0.58, 6), metal, [0.38, 0.55, 0.68], [0.2, 0, 0.42]);
-  }
-  if (id === 'machine') for (const [index, x] of [-0.23, 0.23].entries()) {
-    const barrel = new THREE.Group();
-    barrel.position.set(x, 0.08, 0.88); barrel.rotation.x = Math.PI / 2; group.add(barrel);
-    const rotor = new THREE.Group(); barrel.add(rotor);
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.64, 8), dark);
-    body.castShadow = true; rotor.add(body);
-    for (let fin = 0; fin < 4; fin++) {
-      const angle = fin * Math.PI / 2;
-      const vane = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.5, 0.035), metal);
-      vane.position.set(Math.cos(angle) * 0.105, 0, Math.sin(angle) * 0.105);
-      vane.castShadow = true; rotor.add(vane);
+  const forward = (geometry: THREE.BufferGeometry, material: THREE.Material, position: [number, number, number], rotation: [number, number, number] = [Math.PI / 2, 0, 0]) => add(geometry, material, position, rotation);
+
+  if (id === 'amber') {
+    for (const side of [-1, 1]) {
+      add(new THREE.BoxGeometry(0.16, 0.2, 0.56), accent, [side * 0.48, 0.16, 0.92], [0, side * 0.24, side * -0.12]);
+      forward(new THREE.CylinderGeometry(0.11, 0.17, 0.38, 8), dark, [side * 0.48, 0.16, 1.28]);
     }
-    const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.08, 8), metal);
-    muzzle.position.y = 0.34; muzzle.castShadow = true; barrel.add(muzzle);
-    rotor.userData.phase = index * 0.7;
-    const rotors = group.userData.rotors as THREE.Group[] | undefined;
-    if (rotors) rotors.push(rotor);
-    else group.userData.rotors = [rotor];
+  }
+  if (id === 'jade') {
+    for (const side of [-1, 1]) {
+      forward(new THREE.ConeGeometry(0.13, 0.62, 7), accent, [side * 0.34, 0.14, 1.22], [Math.PI / 2, 0, side * -0.28]);
+      add(new THREE.SphereGeometry(0.055, 10, 8), steel, [side * 0.23, 0.35, 1.29]);
+    }
+  }
+  if (id === 'violet') {
+    const prism = add(new THREE.OctahedronGeometry(0.31, 0), accent, [0, 0.48, 1.18], [0.25, 0.2, 0]);
+    prism.name = 'prism-core';
+    add(new THREE.BoxGeometry(0.1, 0.1, 0.72), steel, [0, 0.18, 0.9]);
+    add(new THREE.BoxGeometry(0.1, 0.1, 0.72), steel, [0, 0.76, 0.9]);
+  }
+  if (id === 'steel') {
+    const shieldPoints: [number, number][] = [[-0.36, 0.42], [0.36, 0.42], [0.32, -0.1], [0.22, -0.42], [0, -0.58], [-0.22, -0.42], [-0.32, -0.1]];
+    const plate = new THREE.Mesh(makeExtrudedPolygonGeometry(shieldPoints, 0.1), accent);
+    plate.position.set(-1.16, 0.14, 0.52); plate.rotation.x = Math.PI / 2; plate.castShadow = true; group.add(plate);
+    add(new THREE.BoxGeometry(0.08, 0.08, 0.46), steel, [-1.16, 0.18, 0.6]);
+  }
+  if (id === 'gold') {
+    const orbit = new THREE.Group(); orbit.name = 'gold-orbit'; group.add(orbit);
+    for (let shard = 0; shard < 3; shard++) {
+      const angle = shard / 3 * Math.PI * 2;
+      const gem = new THREE.Mesh(new THREE.TetrahedronGeometry(0.2), accent);
+      gem.position.set(Math.cos(angle) * 1.5, 0.32 + (shard % 2) * 0.2, Math.sin(angle) * 1.5);
+      gem.rotation.set(angle, angle * 0.6, 0); gem.castShadow = true; orbit.add(gem);
+    }
+  }
+  if (id === 'cyan') {
+    for (const [index, x] of [-0.42, 0, 0.42].entries()) {
+      const shard = add(new THREE.OctahedronGeometry(index === 1 ? 0.25 : 0.18), accent,
+        [x, 0.2 + (index === 1 ? 0.11 : 0), 1.22 - Math.abs(x) * 0.12], [0.25, 0, index * 0.42]);
+      shard.scale.set(0.72, 0.82, 1.7);
+      shard.name = 'ice-shard';
+    }
+  }
+  if (id === 'orange') {
+    add(new THREE.BoxGeometry(0.48, 0.2, 0.46), dark, [0, 0.11, 0.82]);
+    forward(new THREE.CylinderGeometry(0.17, 0.22, 0.68, 10), accent, [0, 0.12, 1.2]);
+    forward(new THREE.CylinderGeometry(0.12, 0.15, 0.08, 10), dark, [0, 0.12, 1.57]);
+  }
+  if (id === 'pink') {
+    const orbit = new THREE.Group(); orbit.name = 'echo-orbit'; group.add(orbit);
+    for (const side of [-1, 1]) {
+      const echo = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 12), accent);
+      echo.position.set(side * 1.32, 0.2, 0.58); echo.castShadow = true; orbit.add(echo);
+      const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.12), steel);
+      core.position.copy(echo.position); orbit.add(core);
+    }
+  }
+  if (id === 'beam') {
+    add(new THREE.BoxGeometry(0.48, 0.3, 0.64), dark, [0, 0.1, 0.78]);
+    forward(new THREE.CylinderGeometry(0.22, 0.3, 0.58, 10), accent, [0, 0.12, 1.14]);
+    add(new THREE.TorusGeometry(0.21, 0.045, 8, 18), steel, [0, 0.12, 1.46]);
+    add(new THREE.SphereGeometry(0.12, 12, 10), steel, [0, 0.12, 1.45]);
+  }
+  if (id === 'laser') {
+    add(new THREE.BoxGeometry(0.72, 0.14, 0.46), dark, [0, 0.15, 0.78]);
+    for (const side of [-1, 1]) {
+      const blade = add(new THREE.OctahedronGeometry(0.28), accent, [side * 0.34, 0.25, 1.18], [0.2, 0, side * 0.22]);
+      blade.scale.set(0.7, 0.72, 1.65);
+      forward(new THREE.ConeGeometry(0.105, 0.25, 6), steel, [side * 0.34, 0.25, 1.43]);
+    }
+  }
+  if (id === 'machine') {
+    add(new THREE.BoxGeometry(0.68, 0.34, 0.54), dark, [0, 0.1, 0.82]);
+    for (const [index, x] of [-0.23, 0.23].entries()) {
+      const barrel = new THREE.Group();
+      barrel.position.set(x, 0.08, 1.06); barrel.rotation.x = Math.PI / 2; group.add(barrel);
+      const rotor = new THREE.Group(); barrel.add(rotor);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.64, 8), dark);
+      body.castShadow = true; rotor.add(body);
+      for (let fin = 0; fin < 4; fin++) {
+        const angle = fin * Math.PI / 2;
+        const vane = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.5, 0.035), accent);
+        vane.position.set(Math.cos(angle) * 0.105, 0, Math.sin(angle) * 0.105);
+        vane.castShadow = true; rotor.add(vane);
+      }
+      const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.1, 8), accent);
+      muzzle.position.y = 0.34; muzzle.castShadow = true; barrel.add(muzzle);
+      rotor.userData.phase = index * 0.7;
+      const rotors = group.userData.rotors as THREE.Group[] | undefined;
+      if (rotors) rotors.push(rotor);
+      else group.userData.rotors = [rotor];
+    }
   }
   if (id === 'cannon') {
-    add(new THREE.CylinderGeometry(0.23, 0.3, 0.7, 10), dark, [0, 0.16, 0.83], [Math.PI / 2, 0, 0]);
-    add(new THREE.CylinderGeometry(0.28, 0.28, 0.12, 10), metal, [0, 0.16, 1.13], [Math.PI / 2, 0, 0]);
+    add(new THREE.BoxGeometry(0.72, 0.28, 0.52), dark, [0, 0.08, 0.78]);
+    forward(new THREE.CylinderGeometry(0.22, 0.3, 0.82, 12), dark, [0, 0.15, 1.12]);
+    add(new THREE.TorusGeometry(0.24, 0.07, 8, 16), accent, [0, 0.15, 1.54]);
+    forward(new THREE.CylinderGeometry(0.16, 0.16, 0.06, 12), dark, [0, 0.15, 1.54]);
+    add(new THREE.BoxGeometry(0.36, 0.14, 0.28), steel, [0, -0.12, 0.78]);
   }
-  if (id === 'spider') for (const [legIndex, [sx, sz]] of [[-1, -1], [-1, 1], [1, -1], [1, 1]].entries()) {
-    const leg = add(new THREE.ConeGeometry(0.09, 0.72, 6), dark, [sx * 0.68, 0.1, sz * 0.54], [sz * 0.56, 0, -sx * 0.64]);
-    leg.name = 'spider-leg';
-    leg.userData.phase = legIndex * Math.PI / 2;
-    leg.userData.restRotation = { x: leg.rotation.x, y: leg.rotation.y, z: leg.rotation.z };
+  if (id === 'spider') {
+    add(new THREE.SphereGeometry(0.31, 16, 12), accent, [0, 0.12, 1.1]);
+    add(new THREE.SphereGeometry(0.21, 14, 10), dark, [0, 0.12, 1.48]);
+    for (const side of [-1, 1]) add(new THREE.SphereGeometry(0.055, 8, 8), steel, [side * 0.1, 0.23, 1.65]);
+    for (let legIndex = 0; legIndex < 8; legIndex++) {
+      const angle = legIndex / 8 * Math.PI * 2;
+      const sx = Math.cos(angle), sz = Math.sin(angle);
+      const leg = add(new THREE.ConeGeometry(0.075, 0.64, 6), dark,
+        [sx * 1.18, 0.08, sz * 1.18], [sz * 0.56, 0, -sx * 0.66]);
+      leg.name = 'spider-leg';
+      leg.userData.phase = legIndex * Math.PI / 4;
+      leg.userData.restRotation = { x: leg.rotation.x, y: leg.rotation.y, z: leg.rotation.z };
+    }
   }
   if (id === 'axe') {
-    add(new THREE.CylinderGeometry(0.055, 0.08, 0.76, 7), dark, [0.6, 0.34, 0.42], [0, 0, -0.55]);
-    add(new THREE.OctahedronGeometry(0.4, 0), metal, [0.77, 0.67, 0.55], [0, 0, -0.35]);
+    const start = new THREE.Vector3(0.38, 0.14, 0.28);
+    const end = new THREE.Vector3(0.82, 0.14, 1.52);
+    addCylinderBetween(group, start, end, 0.075, 0.09, wood, 10);
+    const direction = end.clone().sub(start).normalize();
+    const haftAxis = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+    for (const t of [0.16, 0.87]) {
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.102, 0.102, 0.075, 10), steel);
+      band.position.copy(start).lerp(end, t); band.quaternion.copy(haftAxis); band.castShadow = true; group.add(band);
+    }
+    const bladePoints: [number, number][] = [
+      [0.13, -0.2], [-0.28, -0.27], [-0.62, -0.43], [-0.9, -0.38], [-1.08, -0.15],
+      [-1.18, 0.02], [-1.1, 0.2], [-0.9, 0.42], [-0.62, 0.44], [-0.38, 0.36], [0.13, 0.18],
+    ];
+    const blade = new THREE.Group();
+    blade.position.copy(end); blade.rotation.x = Math.PI / 2; group.add(blade);
+    const head = new THREE.Mesh(makeExtrudedPolygonGeometry(bladePoints, 0.16), steel);
+    head.castShadow = true; head.receiveShadow = true; blade.add(head);
+    const edgeGeometry = new THREE.BufferGeometry();
+    edgeGeometry.setFromPoints([
+      new THREE.Vector3(-1.08, -0.15, 0.09), new THREE.Vector3(-1.18, 0.02, 0.09), new THREE.Vector3(-1.1, 0.2, 0.09),
+    ]);
+    blade.add(new THREE.Line(edgeGeometry, new THREE.LineBasicMaterial({ color: 0xf7fbff })));
+    add(new THREE.SphereGeometry(0.075, 10, 8), steel, [start.x - 0.04, start.y, start.z - 0.08]);
   }
   return group;
 }
@@ -289,7 +439,7 @@ export class Arena {
     if (previous) {
       group.remove(previous);
       previous.traverse(object => {
-        if (object instanceof THREE.Mesh) {
+        if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
           object.geometry.dispose();
           const materials = Array.isArray(object.material) ? object.material : [object.material];
           materials.forEach(material => material.dispose());
@@ -385,11 +535,13 @@ export class Arena {
         const enemies = w.balls.filter(candidate => candidate.hp > 0 && candidate.team !== b.team)
           .sort((a, other) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(other.x - b.x, other.y - b.y));
         const target = enemies[0];
-        if (target && ['beam', 'machine', 'cannon'].includes(b.abilityId ?? ''))
+        if (target && ['beam', 'machine', 'cannon', 'orange', 'steel'].includes(b.abilityId ?? ''))
           signature.rotation.y = Math.atan2(target.x - x, target.y - y);
         if (!this.reducedMotion.matches) {
-          if (b.abilityId === 'axe') signature.rotation.y = this.fxClock * 3.4;
-          if (b.abilityId === 'laser') signature.rotation.y = this.fxClock * 0.85;
+          const spinRate: Record<string, number> = {
+            amber: 0.7, jade: 0.52, violet: 0.9, gold: 1.35, cyan: 0.72, pink: 0.9, laser: 0.85, axe: 3.4,
+          };
+          if (spinRate[b.abilityId ?? '']) signature.rotation.y = this.fxClock * spinRate[b.abilityId ?? ''];
           if (b.abilityId === 'spider') {
             signature.rotation.y = this.fxClock * 0.32;
             signature.children.forEach(leg => {

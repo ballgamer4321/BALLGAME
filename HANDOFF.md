@@ -4,7 +4,7 @@ Projekt: `C:\Users\antre\Desktop\ball game`; GitHub `https://github.com/ballgame
 
 ## Stan
 
-Etapy 1–6 i 8–9: DONE. Etap 7 (oprawa i telefony): IN_PROGRESS — wciąż brak ręcznego QA 360×800/landscape i pomiaru FPS. Wdrożone animacje: topór wiruje wokół kulki, lufy karabinu obracają się, działa namierzają wroga, nogi Pajęczaka się ruszają, sieci obracają się, a lasery i wiązki mają ruchome znaczniki. Pulsujące efekty mocy zastąpiono obracającymi się odłamkami. Pauza/reduced-motion ograniczają ruch. Produkcja READY, strona 200, API `/api/room` zwraca `online:true`.
+Etapy 1–6 i 8–9: DONE. Etap 7 pozostaje IN_PROGRESS — nie wykonano ręcznego QA 360×800/landscape ani pomiaru FPS. Obecny podetap poprawia czytelność modeli: wszystkie 14 kulek ma charakterystyczny dodatek, a Topór ma drewniany trzonek, szerokie ostrze i metalową krawędź. Broń porusza się zamiast polegać na pulsującym podświetleniu. Kod/testy/build przechodzą; publikacja w toku.
 
 ## Uruchomienie i weryfikacja
 
@@ -15,15 +15,16 @@ Node.js: `C:\Users\antre\.cache\codex-runtimes\codex-primary-runtime\dependencie
 - Build: `node node_modules/vite/bin/vite.js build`
 - Klient: `node node_modules/vite/bin/vite.js --host 127.0.0.1`
 - Serwer: `node node_modules/tsx/dist/cli.mjs src/server/index.ts`
-- Lokalny adres: `http://127.0.0.1:5173/`
+- Adres: `http://127.0.0.1:5173/`
 
-W PowerShell poprzedź komendy pełną ścieżką do `node.exe`, jeśli `node` nie jest w PATH.
+W PowerShell, gdy `node` nie jest w PATH, poprzedź komendy pełną ścieżką do `node.exe` wyżej.
 
-## Pliki i następne kroki
+## Pliki i dalsze kroki
 
-- `src/client/arena.ts` — modele, animacje i efekty Three.js.
-- `src/client/main.ts`, `src/client/style.css` — flow, HUD, UI/responsywność.
-- `src/simulation/world.ts`, `src/server/rooms.ts`, `tests/` — symulacja, multiplayer i scenariusze.
-- Gdy będzie dozwolona ścieżka, wykonać QA etapu 7 na 360×800 oraz landscape, zmierzyć FPS i dopiero wtedy zmienić status etapu.
+- `src/client/arena.ts` — modele, animacje, geometria i efekty Three.js.
+- `src/client/main.ts`, `src/client/style.css` — flow, HUD, UI.
+- `src/simulation/world.ts`, `src/server/rooms.ts`, `tests/` — symulacja, multiplayer, testy.
+- Opublikować zweryfikowany model na GitHub i Vercel; sprawdzić HTTP oraz API.
+- Następnie wrócić do ręcznego QA 360×800, landscape i FPS. Nie omijać blokady lokalnej karty innym sterowaniem.
 
-Ostatnie testy: 48/48; TypeScript; Vite build; diff check — OK. Ręcznego obrazu i FPS nie sprawdzono. Nie obchodzić blokady lokalnej karty przeglądarki.
+Ostatnie testy: 48/48; TypeScript; Vite build; diff check — OK. Ręcznego obrazu/FPS nie sprawdzono.
