@@ -1,3 +1,5 @@
+import { MATCH_BALLS } from './config';
+
 export const COSMETICS = [
   { id: 'aurora', name: 'Aurora', description: 'Miętowy odcień kulki.', color: '#8df2ca', cost: 0 },
   { id: 'solar', name: 'Rozbłysk', description: 'Złoty odcień kulki.', color: '#ffc66e', cost: 25 },
@@ -5,16 +7,27 @@ export const COSMETICS = [
 ] as const;
 
 export type CosmeticId = typeof COSMETICS[number]['id'];
+export type BallId = typeof MATCH_BALLS[number]['id'];
+export const STARTER_BALL_IDS: readonly BallId[] = ['jade', 'orange', 'pink'];
+
+export const BALL_SHOP = MATCH_BALLS.map(ball => ({
+  id: ball.id, name: ball.name, color: ball.color, ability: ball.ability,
+  weakness: ball.weakness, trigger: ball.trigger,
+}));
+
+export const BALL_CRATE_COST = 300;
+
 export type MatchOutcome = 'win' | 'draw' | 'loss';
-export const MATCH_REWARDS: Record<MatchOutcome, number> = { win: 20, draw: 10, loss: 8 };
+export const MATCH_REWARDS: Record<MatchOutcome, number> = { win: 100, draw: 75, loss: 50 };
 
 export function rewardForOutcome(outcome: MatchOutcome) { return MATCH_REWARDS[outcome]; }
 
 export interface ProgressRecord {
-  version: 1;
+  version: 2;
   coins: number;
   matches: number;
   wins: number;
+  ownedBalls: BallId[];
   ownedCosmetics: CosmeticId[];
   equippedCosmetic: CosmeticId;
   processedMatches: Record<string, true>;
@@ -30,7 +43,8 @@ export class ProgressError extends Error {
 
 export function createProgress(now = Date.now()): ProgressRecord {
   return {
-    version: 1, coins: 0, matches: 0, wins: 0,
+    version: 2, coins: 0, matches: 0, wins: 0,
+    ownedBalls: [...STARTER_BALL_IDS],
     ownedCosmetics: ['aurora'], equippedCosmetic: 'aurora',
     processedMatches: {}, createdAt: now, updatedAt: now,
   };
@@ -43,6 +57,13 @@ export function normalizeProgress(value: unknown, now = Date.now()): ProgressRec
     ? [...new Set(raw.ownedCosmetics.filter((id): id is CosmeticId => typeof id === 'string' && validIds.has(id)))]
     : [];
   if (!ownedCosmetics.includes('aurora')) ownedCosmetics.unshift('aurora');
+  const validBallIds = new Set<string>(MATCH_BALLS.map(ball => ball.id));
+  const storedBalls = Array.isArray(raw.ownedBalls)
+    ? raw.ownedBalls.filter((id): id is BallId => typeof id === 'string' && validBallIds.has(id))
+    : typeof raw.createdAt === 'number' && raw.createdAt > 0
+      ? MATCH_BALLS.map(ball => ball.id)
+      : [...STARTER_BALL_IDS];
+  const ownedBalls = [...new Set<BallId>([...STARTER_BALL_IDS, ...storedBalls])];
   const equippedCosmetic = typeof raw.equippedCosmetic === 'string' && ownedCosmetics.includes(raw.equippedCosmetic as CosmeticId)
     ? raw.equippedCosmetic as CosmeticId : 'aurora';
   const processedMatches = raw.processedMatches && typeof raw.processedMatches === 'object'
@@ -51,9 +72,9 @@ export function normalizeProgress(value: unknown, now = Date.now()): ProgressRec
       .slice(-256).map(([id]) => [id, true as const]))
     : {};
   return {
-    version: 1,
+    version: 2,
     coins: finiteCount(raw.coins), matches: finiteCount(raw.matches), wins: finiteCount(raw.wins),
-    ownedCosmetics, equippedCosmetic, processedMatches,
+    ownedBalls, ownedCosmetics, equippedCosmetic, processedMatches,
     createdAt: finiteTime(raw.createdAt, now), updatedAt: finiteTime(raw.updatedAt, now),
   };
 }
@@ -68,6 +89,7 @@ function finiteTime(value: unknown, fallback: number) {
 export function publicProgress(progress: ProgressRecord): PublicProgress {
   return {
     coins: progress.coins, matches: progress.matches, wins: progress.wins,
+    ownedBalls: [...progress.ownedBalls],
     ownedCosmetics: [...progress.ownedCosmetics], equippedCosmetic: progress.equippedCosmetic,
   };
 }
@@ -96,6 +118,22 @@ export function purchaseCosmetic(progress: ProgressRecord, cosmeticId: string, n
   if (current.ownedCosmetics.includes(cosmetic.id)) throw new ProgressError('Ten kosmetyk jest już w kolekcji', 409);
   if (current.coins < cosmetic.cost) throw new ProgressError('Za mało monet', 409);
   return { ...current, coins: current.coins - cosmetic.cost, ownedCosmetics: [...current.ownedCosmetics, cosmetic.id], updatedAt: now };
+}
+
+export function openBallCrate(progress: ProgressRecord, randomValue: number, now = Date.now()) {
+  const current = normalizeProgress(progress, now);
+  const lockedBalls = BALL_SHOP.filter(ball => !current.ownedBalls.includes(ball.id));
+  if (!lockedBalls.length) throw new ProgressError('Masz już wszystkie kulki.', 409);
+  if (current.coins < BALL_CRATE_COST) throw new ProgressError(`Skrzynka kosztuje ${BALL_CRATE_COST} monet.`, 409);
+  if (!Number.isFinite(randomValue) || randomValue < 0 || randomValue >= 1) throw new ProgressError('Nieprawidłowe losowanie.');
+  const ball = lockedBalls[Math.floor(randomValue * lockedBalls.length)];
+  const updated = {
+    ...current,
+    coins: current.coins - BALL_CRATE_COST,
+    ownedBalls: [...current.ownedBalls, ball.id],
+    updatedAt: now,
+  };
+  return { progress: updated, ball };
 }
 
 export function equipCosmetic(progress: ProgressRecord, cosmeticId: string, now = Date.now()): ProgressRecord {

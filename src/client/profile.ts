@@ -1,5 +1,7 @@
 import type { PublicProgress } from '../shared/progression';
 
+export interface BallCrateReward { id: string; name: string; color: string; ability: string; }
+
 const STORAGE_KEY = 'orbita-profile-token-v1';
 let memoryToken: string | null = null;
 let profile: PublicProgress | null = null;
@@ -30,21 +32,21 @@ export function getProfileMessage() { return message; }
 
 function emit() { window.dispatchEvent(new CustomEvent('orbita-profile-updated')); }
 
-async function request(type: 'load' | 'purchase' | 'equip', cosmeticId?: string) {
+async function request(type: 'load' | 'purchase' | 'equip' | 'open-crate', itemId?: string) {
   const token = getProfileToken();
   if (!token) throw new Error('Ta przeglądarka nie obsługuje bezpiecznego profilu.');
   const response = await fetch('/api/profile', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-    body: JSON.stringify({ type, token, cosmeticId }),
+    body: JSON.stringify({ type, token, ...(type === 'purchase' || type === 'equip' ? { cosmeticId: itemId } : {}) }),
   });
-  const data = await response.json().catch(() => ({})) as { profile?: PublicProgress; error?: string };
+  const data = await response.json().catch(() => ({})) as { profile?: PublicProgress; error?: string; ball?: BallCrateReward };
   if (!response.ok || !data.profile) throw new Error(data.error || 'Zapis online jest niedostępny.');
   profile = data.profile; online = true; message = 'Profil zapisuje się online.'; emit();
-  return profile;
+  return { profile, ball: data.ball };
 }
 
 export async function refreshProfile() {
-  try { return await request('load'); }
+  try { return (await request('load')).profile; }
   catch (error) {
     online = false;
     message = error instanceof Error ? error.message : 'Zapis online jest niedostępny.';
@@ -53,5 +55,10 @@ export async function refreshProfile() {
   }
 }
 
-export async function buyCosmetic(cosmeticId: string) { return request('purchase', cosmeticId); }
-export async function equipCosmetic(cosmeticId: string) { return request('equip', cosmeticId); }
+export async function buyCosmetic(cosmeticId: string) { return (await request('purchase', cosmeticId)).profile; }
+export async function equipCosmetic(cosmeticId: string) { return (await request('equip', cosmeticId)).profile; }
+export async function openBallCrate() {
+  const result = await request('open-crate');
+  if (!result.ball) throw new Error('Skrzynka nie zwróciła kulki.');
+  return { profile: result.profile, ball: result.ball };
+}

@@ -1,7 +1,7 @@
 import { firebaseConfigured, firebaseDatabase } from './firebase.js';
 import { handleHostedAction, HostedError, type HostedAction, type HostedStore, type StoredMatch } from '../src/server/hosted.js';
 import { ensureProgress, progressIdForToken, awardProgressMatch } from './profile.js';
-import { rewardForOutcome } from '../src/shared/progression.js';
+import { rewardForOutcome, STARTER_BALL_IDS } from '../src/shared/progression.js';
 
 const ROOM_TTL_MS = 60 * 60 * 1000;
 
@@ -96,12 +96,16 @@ export async function POST(request: Request) {
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new HostedError('Nieprawidłowa wiadomość');
     const action = parsed as HostedAction & { profileToken?: unknown };
     delete action.profileId;
+    delete action.ownedBalls;
     if (action.type === 'create' || action.type === 'join') {
       if (action.profileToken !== undefined) {
         if (typeof action.profileToken !== 'string' || !/^[a-f0-9]{48}$/.test(action.profileToken)) throw new HostedError('Nieprawidłowy profil');
         const profileId = progressIdForToken(action.profileToken);
-        await ensureProgress(profileId);
+        const profile = await ensureProgress(profileId);
         action.profileId = profileId;
+        action.ownedBalls = profile.ownedBalls;
+      } else {
+        action.ownedBalls = [...STARTER_BALL_IDS];
       }
       delete action.profileToken;
     } else delete action.profileToken;

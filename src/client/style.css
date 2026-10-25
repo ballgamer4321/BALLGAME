@@ -57,6 +57,41 @@ main{max-width:none;width:100%;padding:0;margin:0}.layout{display:block}.battle{
   .local-side-tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:12px 0}.local-side-tabs button{min-height:44px;border:1px solid #587451;border-radius:8px;background:#192e20;color:#d5e8ca;font-size:12px}.local-side-tabs button[aria-pressed=true]{background:#d7f786;border-color:#d7f786;color:#192818;font-weight:750}.local-choice-pair{display:block}.local-panel[data-side=local] .local-choice-pair>div:nth-child(2),.local-panel[data-side=rival] .local-choice-pair>div:nth-child(1){display:none}.local-choice-pair .ball-card-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:5px 0 9px}.local-choice-pair .ball-card{min-height:66px;padding:7px}.local-choice-pair .ball-card-ability{font-size:8px;-webkit-line-clamp:1}.local-panel h2{font-size:22px}.local-panel .hint{margin:5px 0;font-size:10px}.local-panel .aim-picker>p{display:none}.local-panel #start{margin:10px auto 0;min-height:48px}
   .selection-overlay{align-items:flex-start;padding:8px}.selection-shell{width:100%;max-height:100%;padding:14px 12px;overflow-y:auto}.selection-heading h2{font-size:24px;margin:5px 0}.selection-heading p{font-size:10px;margin-bottom:10px}.selection-players{margin-bottom:8px}.selection-player{min-height:42px;padding:6px;font-size:9px}.selection-tabs{margin-bottom:8px}.selection-tabs button{min-height:44px;padding:7px;font-size:10px}.selection-cards,.selection-cards:has(> :nth-child(4)){max-height:215px;gap:6px;margin-bottom:9px}.selection-cards .ball-card{min-height:91px;padding:8px}.selection-cards .ball-card-ability{font-size:9px}.selection-aim{padding:8px 10px}.selection-aim span{display:none}.selection-bottom{margin-top:8px}.selection-bottom .primary{min-height:48px}.selection-bottom p{font-size:9px;margin-top:5px}
 }
+
+/* Skrzynka odblokowuje po jednej nowej kulce i pokazuje bieżące saldo. */
+.ball-shop-layout{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:14px;align-items:start}
+.ball-shop{max-height:440px;overflow:auto;padding-right:4px;scrollbar-color:#53634d #111915}
+.ball-shop-card{grid-template-columns:38px minmax(0,1fr) auto}
+.ball-unlock-status{justify-self:end;align-self:center;padding:7px 8px;border:1px solid #6b5942;border-radius:7px;background:#272219;color:#d8bc92;font-size:8px;font-weight:750;white-space:nowrap}
+.ball-unlock-status.is-owned{border-color:#506845;background:#1b281d;color:#c9e69b}
+.ball-crate{position:sticky;top:10px;display:grid;justify-items:center;gap:10px;overflow:hidden;padding:18px 15px;border:1px solid #58664b;border-radius:12px;background:radial-gradient(ellipse at 50% 15%,#b9d87418,transparent 45%),linear-gradient(160deg,#1b2820,#111915 76%);text-align:center}
+.ball-crate::before{position:absolute;inset:5px;border:1px solid #d7f78612;border-radius:8px;content:"";pointer-events:none}
+.crate-art{position:relative;display:grid;place-items:center;width:138px;height:104px;margin:2px 0 4px;filter:drop-shadow(0 11px 14px #0009)}
+.crate-art::before{position:absolute;left:20px;right:20px;bottom:8px;height:60px;border:2px solid #b9a16c;border-radius:5px;background:linear-gradient(90deg,#4b3926,#937344 18%,#594329 38%,#a0834c 52%,#483621 78%,#7f663d);box-shadow:inset 0 0 0 4px #382c20,inset 0 8px 12px #e5ce7633;content:""}
+.crate-art::after{position:absolute;left:14px;right:14px;top:16px;height:27px;border:2px solid #d1bd81;border-radius:6px;background:linear-gradient(180deg,#9a8051,#473822);box-shadow:0 5px 0 #372b1e;content:"";transform:perspective(90px) rotateX(-12deg)}
+.crate-art span{z-index:1;display:grid;place-items:center;width:28px;height:36px;margin-top:27px;border:1px solid #d9e8a15e;border-radius:8px;background:#b4ce7660;color:#ecf5cd;font-size:19px;text-shadow:0 0 12px #d7f7869c}
+.ball-crate>.eyebrow{color:#bdd17e}
+.ball-crate h3{margin:0;color:#edf2e8;font-size:16px;letter-spacing:.04em;text-transform:uppercase}
+.ball-crate>p{max-width:220px;margin:0;color:#a8b3a8;font-size:10px;line-height:1.55}
+.crate-economy{display:grid;grid-template-columns:1fr 1fr;width:100%;gap:6px;padding:9px 0;border-top:1px solid #ffffff13;border-bottom:1px solid #ffffff13}
+.crate-economy>span{display:grid;gap:5px;color:#8f9e91;font-size:8px;text-transform:uppercase;letter-spacing:.08em}
+.crate-economy b{color:#d8e6cf;font-size:12px;letter-spacing:0}
+.crate-economy b strong{color:#d7f786;font-size:15px}
+#open-ball-crate{width:100%;min-height:45px;background:#d7f786;color:#172313}
+#open-ball-crate:disabled{border-color:#45523f;background:#263129;color:#8f9a8c;cursor:not-allowed}
+.crate-reveal{display:grid;grid-template-columns:42px minmax(0,1fr);align-items:center;width:100%;gap:10px;padding:10px;border:1px solid #7b9a57;border-radius:9px;background:#1b2a20;text-align:left}
+.crate-reveal[hidden]{display:none}
+.crate-reveal-orb{width:38px;height:38px;border-radius:50%;background:radial-gradient(circle at 30% 24%,#fff,var(--orb) 42%,#17251b 96%);box-shadow:0 0 20px color-mix(in srgb,var(--orb),transparent 35%)}
+.crate-reveal-copy{display:grid;gap:3px;min-width:0}
+.crate-reveal-copy small{color:#d7f786;font-size:7px;letter-spacing:.12em}
+.crate-reveal-copy strong{color:#f1f4ed;font-size:12px}
+.crate-reveal-copy span{color:#a8b3a8;font-size:8px;line-height:1.4}
+.ball-crate.is-opening .crate-art{animation:crate-open .85s cubic-bezier(.2,.8,.25,1) both}
+.crate-reveal:not([hidden]){animation:crate-reveal .34s ease-out both}
+@keyframes crate-open{0%,100%{transform:translateY(0) rotate(0)}24%{transform:translateY(2px) rotate(-3deg)}48%{transform:translateY(-8px) rotate(3deg);filter:drop-shadow(0 0 20px #d7f78688)}72%{transform:translateY(-4px) rotate(-2deg)}}
+@keyframes crate-reveal{from{opacity:0;transform:translateY(7px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:760px){.ball-shop-layout{grid-template-columns:minmax(0,1fr)}.ball-crate{position:relative;top:auto;grid-row:1}.ball-shop{max-height:360px}}
+@media(prefers-reduced-motion:reduce){.ball-crate.is-opening .crate-art,.crate-reveal:not([hidden]){animation:none}}
 @media(orientation:landscape) and (max-height:500px){
   .viewport{height:440px;min-height:440px}.battle:has(.home-overlay:not([hidden])) .viewport{height:520px;min-height:520px}.battle:has(.selection-overlay:not([hidden])) .viewport{height:600px;min-height:600px}.home-shell,.selection-shell{max-height:calc(100% - 8px)}
 }
@@ -68,7 +103,8 @@ main{max-width:none;width:100%;padding:0;margin:0}.layout{display:block}.battle{
 .collection-panel h2{font-size:24px;margin:8px 0 12px}.collection-panel>.back-button{margin-bottom:12px}
 .collection-stats{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px;border:1px solid #41533c;border-radius:9px;background:#17251d}.collection-stats strong{font-size:22px;color:#d7f786}.collection-stats>span{font-size:10px;color:#aebca7}
 #collection-note{min-height:20px;margin:10px 0;color:#acbd9f;font-size:10px;line-height:1.5}.cosmetic-list{display:grid;gap:8px}.cosmetic-card{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px;border:1px solid #354a38;border-radius:9px;background:#18271e}.cosmetic-card strong{font-size:12px}.cosmetic-card p{margin:4px 0 0;color:#aebca7;font-size:9px;line-height:1.4}.cosmetic-swatch{width:24px;height:24px;margin:5px;border:1px solid #ffffff55;border-radius:7px;background:var(--cosmetic)}.cosmetic-action{min-width:102px;min-height:40px;padding:0 10px}.cosmetic-action:disabled{border-color:#3e503b;background:#26372a;color:#adbd9e;opacity:.8}.collection-footnote{margin:10px 0 0;color:#8f9e88;font-size:9px;line-height:1.5}
-@media(max-width:620px){.profile-strip{margin-bottom:10px;padding:10px}.profile-strip strong{font-size:10px}.collection-panel h2{font-size:21px}.collection-stats{padding:10px}.collection-stats strong{font-size:19px}.cosmetic-card{grid-template-columns:34px minmax(0,1fr);gap:8px;padding:8px}.cosmetic-swatch{width:22px;height:22px}.cosmetic-action{grid-column:2;justify-self:start;min-height:40px}}
+.collection-tabs{display:flex;gap:7px;margin:12px 0}.collection-tabs button{min-height:40px;padding:0 15px;border:1px solid #35483a;border-radius:8px;background:#151e18;color:#b8c5b8;font-size:10px;font-weight:700}.collection-tabs button[aria-pressed="true"]{border-color:#93b76c;background:#d7f786;color:#172313}.ball-shop{display:grid;gap:7px}.ball-shop-card{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:9px;padding:9px;border:1px solid #354a38;border-radius:9px;background:#18271e}.ball-shop-copy{min-width:0}.ball-shop-copy strong{font-size:12px}.ball-shop-copy small{margin-left:7px;color:#98aa91;font-size:8px;letter-spacing:.7px}.ball-shop-copy p{margin:4px 0 0;color:#aebca7;font-size:9px;line-height:1.35}
+@media(max-width:620px){.profile-strip{margin-bottom:10px;padding:10px}.profile-strip strong{font-size:10px}.collection-panel h2{font-size:21px}.collection-stats{padding:10px}.collection-stats strong{font-size:19px}.cosmetic-card{grid-template-columns:34px minmax(0,1fr);gap:8px;padding:8px}.ball-shop-card{grid-template-columns:32px minmax(0,1fr);gap:8px;padding:8px}.cosmetic-swatch{width:22px;height:22px}.cosmetic-action{grid-column:2;justify-self:start;min-height:40px}}
 
 
 /* Celowanie na arenie, z małym paskiem zatwierdzenia jak w Ball VS Ball. */
@@ -186,7 +222,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .home-heading h1{margin:12px 0 9px;color:var(--text);font-size:clamp(38px,5vw,56px);font-weight:720;letter-spacing:-2.3px}
 .home-heading h1 span{color:var(--accent)}
 .home-heading p{color:#a7b3aa;font-size:13px;line-height:1.65}
-.home-heading::after{display:block;margin-top:18px;padding-top:13px;border-top:1px solid #ffffff14;color:#8d9b91;content:"14 KULEK   ·   4 TRYBY   ·   1–4 GRACZY";font-size:9px;font-weight:650;letter-spacing:1.35px}
+.home-heading::after{display:block;margin-top:18px;padding-top:13px;border-top:1px solid #ffffff14;color:#8d9b91;content:"16 KULEK   ·   4 TRYBY   ·   1–4 GRACZY";font-size:9px;font-weight:650;letter-spacing:1.35px}
 .home-network{padding:0;border:0;background:transparent}
 .home-network #network-status{margin:0 0 12px;text-align:left;color:#9aa99f;font-size:11px;letter-spacing:.15px}
 .mode-options{gap:10px}
@@ -223,6 +259,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .profile-strip strong{color:#edf3ed;font-size:11px}
 .collection-open,.cosmetic-action{border:1px solid #829766;border-radius:8px;background:#202a22;color:#d6e8bd;font-size:10px;font-weight:700}
 .collection-open:hover,.cosmetic-action:hover:not(:disabled){background:#29372a;border-color:var(--accent)}
+.collection-tabs button{border-color:#303d35;background:#151d19;color:#b4c0b7}.collection-tabs button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:#172018}.ball-shop-card{border-color:#303d35;border-radius:9px;background:#121915}.ball-shop-copy p,.ball-shop-copy small{color:#a0ada3}
 .primary{min-height:50px;border-radius:9px;background:var(--accent);color:#152016;font-size:12px;font-weight:760;letter-spacing:.1px;transition:background .16s ease,transform .16s ease,box-shadow .16s ease}
 .primary:hover:not(:disabled){transform:translateY(-1px);background:#d8efa7;box-shadow:0 8px 22px #c9e98a19}
 .secondary-controls button,.back-button,.exit-match{border-color:#3a483f;border-radius:8px;background:#151d18;color:#cbd5cd}
@@ -267,6 +304,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .ball-card strong{font-size:12px;font-weight:700}
 .ball-card small{color:#aebbb1;font-size:8px;letter-spacing:.35px}
 .ball-card-ability{color:#a4b1a7;font-size:9px;line-height:1.45}
+.ball-card-weakness{grid-column:1/-1;color:#c9aa82;font-size:8px;line-height:1.35}
+.ball-shop-copy .ball-shop-weakness{color:#c9aa82}
 .selection-aim{border-color:#324138;border-radius:9px;background:#111814}
 .selection-aim output,.aim-copy output,.direction-copy output{color:#d1e7a5}
 .selection-aim span,.aim-copy span,.direction-copy span{color:#a4b2a8}
@@ -340,3 +379,40 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
   .mode-card,.mode-card-arrow,.ball-card,.primary{transition:none}
   .mode-card:hover:not(:disabled),.ball-card:hover:not(:disabled),.primary:hover:not(:disabled){transform:none}
 }
+
+@font-face{
+  font-family:"Press Start 2P";
+  src:url("/fonts/press-start-2p.ttf") format("truetype");
+  font-style:normal;font-weight:400;font-display:swap
+}
+.home-wordmark{
+  position:absolute;top:clamp(17px,3.8vh,36px);left:18px;right:18px;display:grid;justify-items:center;gap:10px;
+  text-align:center;pointer-events:none;text-transform:uppercase
+}
+.home-wordmark>span{
+  color:#f1f4ed;font-family:"Press Start 2P",ui-monospace,monospace;
+  font-size:clamp(18px,2.2vw,34px);line-height:1.55;letter-spacing:.035em;
+  text-shadow:0 3px 0 #1c2b20,0 0 28px #c9e98a25
+}
+.home-wordmark>small{
+  color:#9caa9d;font-family:"Press Start 2P",ui-monospace,monospace;
+  font-size:clamp(6px,.58vw,8px);line-height:1.6;letter-spacing:.04em
+}
+.home-overlay:has(#local-panel:not([hidden])) .home-wordmark{display:none}
+.home-shell{width:min(100%,840px);border-radius:13px;background:linear-gradient(145deg,#111915f7,#0c120ff8 64%,#101713f8);box-shadow:0 28px 90px #000c,0 0 45px #c9e98a0c}
+.battle:has(.home-overlay:not([hidden])) .viewport::before{
+  position:absolute;z-index:0;inset:7% 17%;border:1px solid #aeca7828;box-shadow:0 0 34px #aeca7817,inset 0 0 36px #aeca7808;
+  content:"";pointer-events:none
+}
+@media(max-width:620px){
+  .home-overlay:not(.is-aiming):not(:has(#local-panel:not([hidden]))){align-items:center;padding:72px 9px 12px}
+  .home-wordmark{top:14px;gap:6px}
+  .home-wordmark>span{font-size:clamp(11px,4vw,17px)}
+  .home-wordmark>small{font-size:6px}
+  .home-shell{width:min(100%,840px)}
+  .battle:has(.home-overlay:not([hidden])) .viewport::before{inset:7% 5%}
+}
+.profile-coin-count{display:grid;justify-items:center;gap:3px;min-width:58px;padding:6px 9px;border:1px solid #536845;border-radius:8px;background:#131d16;color:#d7f786}
+.profile-coin-count>strong{font-family:Consolas,monospace;font-size:16px}
+.profile-coin-count>span{font-size:7px;letter-spacing:.12em;color:#aebca7}
+@media(max-width:620px){.profile-coin-count{min-width:52px;padding:6px}.profile-coin-count>strong{font-size:14px}.ball-shop-card{grid-template-columns:32px minmax(0,1fr) auto;gap:6px}.ball-unlock-status{padding:6px 5px;font-size:7px}}

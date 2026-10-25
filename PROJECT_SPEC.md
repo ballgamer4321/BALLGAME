@@ -21,6 +21,7 @@ Nie grano w Roblox i nie obejrzano nagrań. Dwa znalezione adresy YouTube nie zo
 - S3 — [How to Play](https://ballvsballcodes.org/how-to-play/). Wtórny poradnik deklarujący oparcie na nagraniach z 25–29 września. Wspiera jednorazowe celowanie i wyzwalanie części mocy na ścianach; nie zweryfikowano jego materiałów wideo.
 - S4 — [Modes, Rewards and Core Gameplay Loop](https://ballvsball.pro/guides/wiki/). Wtórny opis trzech serc, przeciągania kierunku i eliminacji przez HP. Liczby i pochodzenie puli losowania nie są potwierdzone źródłem pierwotnym.
 - S5 — [Balls: Abilities, Crates and Rarities](https://robolibrary.org/wikis/ball-vs-ball/balls). Wtórna lista proponująca m.in. truciznę kontaktową, działka po odbiciu oraz obszary mrozu. To wskazówki projektowe, nie zweryfikowane specyfikacje mocy.
+- S6 — [oficjalny opis gry Roblox, aktualny odczyt 2026-10-25](https://www.roblox.com/games/96510596525082/Ball-VS-Ball). Potwierdza zarabianie monet za zwycięstwa, kupowanie i kolekcjonowanie nowych kulek w sklepie oraz przerzut kulki podczas bitwy. Dokładne ceny, rodzaj losowania i koszt przerzutu nie są podane.
 - V1 — [Foltyn: ROBLOX BALL VS BALL..](https://www.youtube.com/watch?v=H8DIxKbEZG4), znaleziony opis przypisuje publikację 2026-10-01. V2 — [STUD: ROBLOX BALL VS BALL!](https://www.youtube.com/watch?v=SoY84LgTVpE), opis przypisuje 2026-10-04. Próby otwarcia nieudane; nie wyprowadzono z nich reguł gry.
 - Odrzucono jako podstawę sterowania [poradnik z ręcznymi atakami i unikami](https://www.ball-vs-ball-wiki.wiki/en/guides/ball-vs-ball-guide/): sprzeczny z oficjalnym automatycznym PvP. Nie kopiować niesprawdzonych skrótów klawiaturowych ani rerollu w trakcie walki.
 
@@ -36,7 +37,8 @@ Nie grano w Roblox i nie obejrzano nagrań. Dwa znalezione adresy YouTube nie zo
 | Moce przy ścianie, kontakcie i upływie czasu | Ściany wspierane S3/S5; dokładne warunki niepewne | Własne, opisane wyzwalacze |
 | HP, zamknięta arena i odbicia | Wspierane S2/S4 | Własna symulacja i parametry |
 | Trzy serca, punktacja, remisy, nagrody | Tylko opisy wtórne | Konfigurowalny własny wariant poniżej |
-| Sklep/gacha, trading, reroll podczas walki | Trading w S1, pozostałe zależne od źródła/wersji | Trading i płatne rerolle poza zakresem; kosmetyczny postęp |
+| Sklep odblokowujący kulki | Potwierdzony S6; sposób i ceny nieznane | Dodać własny sklep z jawnymi cenami za monety; zachować opis cen jako autorski wariant |
+| Gacha, trading i przerzut podczas walki | Trading i przerzut potwierdza opis S1/S6; ceny i zasady przerzutu nieznane | Poza tym podzadaniem; bez wymyślania cen lub udawania zgodności z Roblox |
 
 ## Własne zasady — nie są danymi z Roblox
 
@@ -97,6 +99,14 @@ Stylistyka: ciemna sportowa arena, czytelna jasna krawędź, kolor drużyny oddz
 
 Etap 8: anonimowy profil z losowym tokenem; zapis przez Firebase Realtime Database i Firebase Admin SDK w funkcjach Vercel (istniejąca architektura nie zapewnia trwałego wolumenu SQLite). Ścieżka profilu używa SHA-256 tokenu, reguły bazy blokują dostęp klienta; wyczyszczenie pamięci przeglądarki usuwa token i nie ma odzyskiwania ani synchronizacji urządzeń. Wszystkie kulki pozostają testowo dostępne. Kosmetyki są trwałe i zdobywane za zakończone mecze; zmiany nagród wyłącznie przez serwer, idempotencja po losowym matchId.
 
+### Rozszerzenie kolekcji: sklep kulek (2026-10-25)
+
+Oficjalny opis S6 potwierdza sklep odblokowujący kulki, ale nie ceny ani metodę zdobywania. Orbita używa trzech własnych kulek startowych; nie jest to deklaracja odwzorowania oryginalnej ekonomii. Starsze profile są normalizowane do aktualnego rosteru, a pięć tymczasowo wycofanych ID filtruje się z kolekcji. Tryb lokalny i online korzystają z tego samego katalogu. Serwer bierze pulę losowania i wybór z kolekcji z zapisanego inwentarza, a nie z danych przesłanych przez klienta.
+
+### Skrzynka kulek i nagrody (2026-10-25)
+
+Nowy profil zaczyna z trzema kulkami. Wygrana przyznaje 100 monet, remis 75, a przegrana 50. Skrzynka kosztuje 300 monet i losuje po stronie serwera jedną z jeszcze nieposiadanych kulek; nie zwraca duplikatu. Katalog pokazuje status odblokowania, a skrzynka pokazuje saldo, liczbę pozostałych kul i odkrytą nagrodę. Nagroda i odjęcie monet zapisują się atomowo w Firebase Realtime Database. Wartości są balansem Orbity, nie informacją o oficjalnej ekonomii Roblox.
+
 Adapter reklam: `isAvailable`, `showInterstitial`, `showRewarded`. Domyślny dostawca zwraca niedostępność i nic nie wyświetla. Reklamy tylko pomiędzy meczami; nie zatrzymują gotowości pokoju. Kosmetyka za rewarded dopiero po zweryfikowanym potwierdzeniu dostawcy, nigdy za sam callback klienta. Bez dostawcy brak emisji, nagród reklamowych i twierdzeń o przychodzie.
 
 ## Etapy i kryteria ukończenia
@@ -122,4 +132,26 @@ Kierunek jest osobnym krokiem po wyborze kulki. Sterowanie przypomina opisywany 
 
 ### Aktualizacja kulek i efektów (2026-10-25)
 
-Lista zawiera 14 własnych kulek. Sześć nowych ról to Wiązka (ładowany promień), Laser (czasowa bariera), Karabin (szybkie pociski), Salwa (wachlarz pocisków), Pajęczak (sieć z pułapką) i Topór (mocniejszy kontakt przy małej liczbie HP). Arena animuje promienie i bariery laserowe, wiązkę z celem, pulsujące sieci oraz smugi pocisków. Nowe ozdoby są przymocowane do modeli konkretnych kulek; na kulkach nie ma aureoli. Inspiracją są ogólne mechaniki laserów, działek i pułapek z Ball VS Ball, ale geometria, tekstury i parametry walki należą do Orbity. Starszy plan ośmiu kulek powyżej jest historyczny; aktualny katalog i balans są w `src/shared/config.ts`.
+Aktualnie dostępnych jest 9 własnych kulek. Czasowo wycofane z wyboru, ofert i sklepu są Wiązka, Pryzmat, Taran, Karabin i Pulsar; zostaną zastąpione nowymi kulkami. Pozostałe role to m.in. Laser (czasowa bariera), Salwa (wachlarz pocisków), Pajęczak (sieć z pułapką) i Topór (krążące ostrze z własnym trafieniem, szybsze i mocniejsze przy małej liczbie HP). Ostrze zadaje obrażenia z własnego hitboxa i nie dodaje bonusu do zwykłego zderzenia kul. Nowe ozdoby są przymocowane do modeli konkretnych kulek; na kulkach nie ma aureoli. Inspiracją są ogólne mechaniki z Ball VS Ball, a geometria, tekstury, trafienia i balans należą do Orbity. Starszy plan ośmiu kulek powyżej jest historyczny; aktualny katalog i balans są w `src/shared/config.ts`.
+
+### Ekran startowy — oprawa arcade
+
+Menu główne pokazuje nagłówek BALL VS BALL w lokalnie dołączonym foncie bitmapowym Press Start 2P, krótki podpis THE GAME i przyciemnioną arenę w tle. Karta wyboru trybu jest węższa i ma zachować czytelność na telefonie. Dołączony font jest dystrybuowany z licencją SIL Open Font License.
+
+### Rozbudowa katalogu do 54 kulek (2026-10-25)
+
+Użytkownik dostarczył listę 42 motywów i 12 autorskich propozycji wraz z proponowanymi mechanikami. Nazwy/motywy pierwszej listy są inspiracją wtórnych katalogów; wszystkie statystyki, opisy działania, koszty i balans traktujemy jako projekt Orbity, nie oficjalne wartości Roblox. Arena pozostaje 20×20, symulacja 60 Hz, a mechaniki trzeba dopasować do jej skali i zachować stabilne prędkości zderzeń. Każda kula trafia do wyboru/sklepu dopiero po implementacji i weryfikacji jej realnej zdolności.
+
+Plan wdrożenia w oddzielnych, zatwierdzanych etapach:
+1. Wspólne reguły statusów i kule 01–09 (ostrza/topór/szarża/ładunek/odłamki/ostrzał/kolce/sieć/noże).
+2. Kule 10–18 (wampir/podział/szachy/kostki/elektryczność/hak/lód/laser/rozwój pomocnika).
+3. Kule 19–27 (ogon/strefa/jabłko/wiązka/duży kolec/łuk/działo/sieć elektryczna/mróz).
+4. Kule 28–36 (aura/wirus/WDC/bomba/pociąg/kwas/kaktus/Fibonacci/harpun).
+5. Kule 37–45 (rój/mikstury/laserowa wieżyczka/kajdany/włócznia/Verity/grawitacja/lustro/magnes).
+6. Kule 46–54 (portale/echo/wulkan/sonar/chrono/tarcza/kometa/nasiona/parowanie), HUD diagnostyczny, serię testowych pojedynków i testy interakcji całego katalogu.
+
+Wspólne reguły z promptu (stacki trucizny, podpalenie, najmocniejsze spowolnienie, odporność po CC, leczenie, limit obiektów, trafienie raz na cooldown, brak obrażeń sojuszniczych) są autorską specyfikacją i będą dokładane do wspólnego rdzenia. Nie obiecujemy jednorazowo kompletnego wdrożenia 54 mocy; kolejne grupy stają się dostępne dopiero po implementacji i testach.
+
+#### Punkt kontrolny partii 1/6
+
+Stan na 2026-10-25: partia 1/6 zaimplementowana. Aktywny roster ma 16 kulek (poprzednie 9 oraz Blade, Burst, Charge, Glass, Machine Gun, Poison Spike i Thief; Axe i Spider były już w bazowym rosterze). Do `docs/BALL_ROSTER_PLAN.md` skopiowano pełną listę otrzymaną od użytkownika. Silnik obsługuje trzy stosy trucizny, podpalenie, maksymalne spowolnienie 40%, odporność na kolejne CC oraz limity ataków/obiektów. Wszystkie dziewięć mechanik partii 1 jest aktywne w symulacji, ma opisy, modele i testy. Naprawiono również wznowienie prędkości Burst podczas aktywnego spowolnienia i czas przeładowania Machine Gun (1,5 s). Pełna weryfikacja partii: 59/59 testów, TypeScript, Vite build i `git diff --check`; wszystkie pary dostępnych kulek przechodzą serię symulacyjną. Kolejną pracą jest partia 2/6, uruchamiana dopiero po osobnym poleceniu „kontynuuj”. Zmian nie pushowano ani nie wdrożono.

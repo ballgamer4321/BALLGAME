@@ -1,12 +1,12 @@
 import type { Rooms } from '../server/rooms';
 import { MATCH_BALLS } from '../shared/config';
-import { COSMETICS } from '../shared/progression';
-import { buyCosmetic, equipCosmetic, getCachedProgress, getProfileMessage, getProfileToken, isProfileOnline, refreshProfile } from './profile';
+import { BALL_CRATE_COST, BALL_SHOP, COSMETICS } from '../shared/progression';
+import { buyCosmetic, equipCosmetic, getCachedProgress, getProfileMessage, getProfileToken, isProfileOnline, openBallCrate, refreshProfile } from './profile';
 import { adsProvider } from './ads';
 type Snapshot = ReturnType<Rooms['snapshot']>;
 export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void, onAimChange: (angle: number, slot: number) => void, onLocalMode: () => void) {
   const panel = document.createElement('section'); panel.className = 'control-panel home-network';
-  panel.innerHTML = `<div id="profile-strip" class="profile-strip"><div><span class="eyebrow">PROFIL GOŚCIA</span><strong id="profile-summary">Ładowanie zapisu…</strong></div><button id="open-collection" class="collection-open" type="button">Kolekcja <span>↗</span></button></div><section id="collection-panel" class="collection-panel" aria-label="Kolekcja kosmetyków" hidden><button id="collection-back" class="back-button" type="button">← Wróć do trybów</button><span class="eyebrow">KOLEKCJA</span><h2>Wygląd kulki</h2><div class="collection-stats"><strong><span id="collection-coins">0</span> ◈</strong><span><b id="collection-matches">0</b> meczów · <b id="collection-wins">0</b> wygranych</span></div><p id="collection-note" role="status">Ładowanie zapisu…</p><div id="cosmetic-list" class="cosmetic-list"></div><p class="collection-footnote">Monety pochodzą z zakończonych meczów. Kosmetyki nie wpływają na siłę kulek.</p></section><p id="network-status" role="status">Kliknij tryb, aby rozpocząć.</p><div id="mode-options" class="mode-options"><button class="mode-card" data-mode="1v1" type="button"><span class="mode-card-icon">◈</span><strong>1 na 1</strong><small>Wyzwanie dla dwóch graczy</small><span class="mode-card-arrow">↗</span></button><button class="mode-card" data-mode="2v2" type="button"><span class="mode-card-icon">✦</span><strong>2 na 2</strong><small>Dwie drużyny, cztery kulki</small><span class="mode-card-arrow">↗</span></button><button class="mode-card" data-mode="bot" type="button"><span class="mode-card-icon">◇</span><strong>Trening z botem</strong><small>Natychmiastowy pojedynek</small><span class="mode-card-arrow">↗</span></button><button class="mode-card" id="local-mode" type="button"><span class="mode-card-icon">◎</span><strong>Gra lokalna</strong><small>Wybierz obie kulki i testuj moce</small><span class="mode-card-arrow">↗</span></button></div><div id="join-controls" class="join-controls"><label for="room-code">Masz kod pokoju?</label><input id="room-code" maxlength="6" autocomplete="off" placeholder="WPISZ KOD"><button id="join-room" type="button">Dołącz do gry ↗</button></div><div id="room-actions" class="room-actions" hidden><div id="room-roster" class="room-roster"></div><button id="ready-room" class="primary" type="button" hidden>Jestem gotowy <span>↗</span></button><div id="round-controls" hidden><p id="score-line"></p><p id="match-summary" hidden></p><button id="rematch" class="primary" type="button" hidden>Rewanż <span>↗</span></button></div><label id="invite-label" for="room-link" hidden>Link zaproszenia</label><input id="room-link" readonly aria-label="Link zaproszenia" hidden><button id="leave-room" class="back-button" type="button" hidden>← Opuść pokój</button></div>`;
+  panel.innerHTML = `<div id="profile-strip" class="profile-strip"><div><span class="eyebrow">PROFIL GOŚCIA</span><strong id="profile-summary">Ładowanie zapisu…</strong></div><span class="profile-coin-count"><strong id="profile-balance">0</strong><span>MONETY</span></span><button id="open-collection" class="collection-open" type="button">Kolekcja <span>↗</span></button></div><section id="collection-panel" class="collection-panel" aria-label="Kolekcja i sklep" hidden><button id="collection-back" class="back-button" type="button">← Wróć do trybów</button><span class="eyebrow">KOLEKCJA</span><h2>Kulki i wygląd</h2><div class="collection-stats"><strong><span id="collection-coins">0</span> ◈</strong><span><b id="collection-matches">0</b> meczów · <b id="collection-wins">0</b> wygranych</span></div><p id="collection-note" role="status">Ładowanie zapisu…</p><div id="collection-tabs" class="collection-tabs"><button id="ball-shop-tab" type="button" aria-pressed="true">Kulki</button><button id="cosmetic-shop-tab" type="button" aria-pressed="false">Kosmetyki</button></div><div id="ball-shop-layout" class="ball-shop-layout"><div id="ball-shop" class="ball-shop"></div><aside id="ball-crate" class="ball-crate" aria-label="Skrzynka z losową kulką"><div class="crate-art" aria-hidden="true"><span>✦</span></div><span class="eyebrow">ORBITAL DROP</span><h3>Skrzynka kul</h3><p>Jedna losowa kulka, której jeszcze nie masz. Bez duplikatów.</p><div class="crate-economy"><span>Twoje saldo <b><strong id="crate-balance">0</strong> ◈</b></span><span>W puli <b id="crate-count">—</b></span></div><button id="open-ball-crate" class="cosmetic-action" type="button">Otwórz · ${BALL_CRATE_COST} ◈</button><div id="crate-reveal" class="crate-reveal" role="status" hidden></div></aside></div><div id="cosmetic-list" class="cosmetic-list" hidden></div><p class="collection-footnote">Nagrody: wygrana 100 · remis 75 · przegrana 50 monet. Skrzynka: ${BALL_CRATE_COST} monet.</p></section><p id="network-status" role="status">Kliknij tryb, aby rozpocząć.</p><div id="mode-options" class="mode-options"><button class="mode-card" data-mode="1v1" type="button"><span class="mode-card-icon">◈</span><strong>1 na 1</strong><small>Wyzwanie dla dwóch graczy</small><span class="mode-card-arrow">↗</span></button><button class="mode-card" data-mode="2v2" type="button"><span class="mode-card-icon">✦</span><strong>2 na 2</strong><small>Dwie drużyny, cztery kulki</small><span class="mode-card-arrow">↗</span></button><button class="mode-card" data-mode="bot" type="button"><span class="mode-card-icon">◇</span><strong>Trening z botem</strong><small>Natychmiastowy pojedynek</small><span class="mode-card-arrow">↗</span></button><button class="mode-card" id="local-mode" type="button"><span class="mode-card-icon">◎</span><strong>Gra lokalna</strong><small>Wybierz obie kulki i testuj moce</small><span class="mode-card-arrow">↗</span></button></div><div id="join-controls" class="join-controls"><label for="room-code">Masz kod pokoju?</label><input id="room-code" maxlength="6" autocomplete="off" placeholder="WPISZ KOD"><button id="join-room" type="button">Dołącz do gry ↗</button></div><div id="room-actions" class="room-actions" hidden><div id="room-roster" class="room-roster"></div><button id="ready-room" class="primary" type="button" hidden>Jestem gotowy <span>↗</span></button><div id="round-controls" hidden><p id="score-line"></p><p id="match-summary" hidden></p><button id="rematch" class="primary" type="button" hidden>Rewanż <span>↗</span></button></div><label id="invite-label" for="room-link" hidden>Link zaproszenia</label><input id="room-link" readonly aria-label="Link zaproszenia" hidden><button id="leave-room" class="back-button" type="button" hidden>← Opuść pokój</button></div>`;
   panel.querySelectorAll<HTMLElement>('.mode-card-icon').forEach((icon, index) => {
     icon.textContent = String(index + 1).padStart(2, '0');
     icon.setAttribute('aria-hidden', 'true');
@@ -34,6 +34,8 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
   let httpQueue = Promise.resolve();
   const status = el('network-status');
   let currentState:Snapshot|null=null;
+  let collectionSection:'balls'|'cosmetics'='balls';
+  let crateOpening=false;
   let roundKey='';
   let cardsKey='';
   let selectedId:string|null=null;
@@ -48,12 +50,35 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     const progress=getCachedProgress();
     const list=el('cosmetic-list');
     list.replaceChildren();
+    const ballList=el('ball-shop');
+    ballList.replaceChildren();
+    el('collection-tabs').hidden=!progress;
+    pickEl<HTMLButtonElement>('ball-shop-tab').setAttribute('aria-pressed',String(collectionSection==='balls'));
+    pickEl<HTMLButtonElement>('cosmetic-shop-tab').setAttribute('aria-pressed',String(collectionSection==='cosmetics'));
+    ballList.hidden=collectionSection!=='balls';
+    el('ball-shop-layout').hidden=collectionSection!=='balls';
+    list.hidden=collectionSection!=='cosmetics';
     el('profile-summary').textContent=progress?`${progress.coins} monet · ${progress.matches} meczów`:'Zapis online niedostępny';
     el('collection-note').textContent=isProfileOnline()?getProfileMessage():getProfileMessage();
     el('collection-coins').textContent=String(progress?.coins??0);
     el('collection-matches').textContent=String(progress?.matches??0);
     el('collection-wins').textContent=String(progress?.wins??0);
-    if(!progress){const empty=document.createElement('p');empty.className='selection-wait';empty.textContent='Kolekcja wczyta się po połączeniu z zapisem online. Lokalna gra działa bez profilu.';list.append(empty);return;}
+    el('profile-balance').textContent=String(progress?.coins??0);
+    el('crate-balance').textContent=String(progress?.coins??0);
+    const lockedBalls=progress?BALL_SHOP.filter(ball=>!progress.ownedBalls.includes(ball.id)):[];
+    el('crate-count').textContent=progress?String(lockedBalls.length):'—';
+    const crateButton=el<HTMLButtonElement>('open-ball-crate');
+    crateButton.disabled=!progress||!isProfileOnline()||crateOpening||!lockedBalls.length||progress.coins<BALL_CRATE_COST;
+    crateButton.textContent=lockedBalls.length?`Otwórz · ${BALL_CRATE_COST} ◈`:'Wszystkie kulki odblokowane';
+    if(!progress){const empty=document.createElement('p');empty.className='selection-wait';empty.textContent='Kolekcja wczyta się po połączeniu z zapisem online. Lokalna gra działa bez profilu.';ballList.append(empty);return;}
+    for(const ball of BALL_SHOP){
+      const owned=progress.ownedBalls.includes(ball.id);
+      const card=document.createElement('article');card.className='ball-shop-card';
+      card.innerHTML=`<span class="cosmetic-swatch" style="--cosmetic:${ball.color}"></span><div class="ball-shop-copy"><strong>${ball.name}</strong><small>${ball.trigger.toUpperCase()}</small><p>${ball.ability}</p><p class="ball-shop-weakness">Słabość: ${ball.weakness}</p></div>`;
+      const ownership=document.createElement('span');ownership.className=owned?'ball-unlock-status is-owned':'ball-unlock-status';
+      ownership.textContent=owned?'✓ Posiadana':'W skrzynce';
+      card.append(ownership);ballList.append(card);
+    }
     for(const cosmetic of COSMETICS){
       const owned=progress.ownedCosmetics.includes(cosmetic.id);
       const equipped=progress.equippedCosmetic===cosmetic.id;
@@ -70,9 +95,35 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
       card.append(button);list.append(card);
     }
   }
+  el<HTMLButtonElement>('open-ball-crate').onclick=async()=>{
+    if(crateOpening)return;
+    crateOpening=true;
+    const crate=el<HTMLElement>('ball-crate');
+    const reveal=el<HTMLElement>('crate-reveal');
+    crate.classList.remove('is-opening');void crate.offsetWidth;crate.classList.add('is-opening');
+    reveal.hidden=true;
+    el('collection-note').textContent='Skrzynka się otwiera…';
+    let finalMessage='';
+    try{
+      const {ball}=await openBallCrate();
+      const orb=document.createElement('span');orb.className='crate-reveal-orb';orb.style.setProperty('--orb',ball.color);orb.setAttribute('aria-hidden','true');
+      const copy=document.createElement('div');copy.className='crate-reveal-copy';
+      const eyebrow=document.createElement('small');eyebrow.textContent='NOWA KULKA';
+      const name=document.createElement('strong');name.textContent=ball.name;
+      const ability=document.createElement('span');ability.textContent=ball.ability;
+      copy.append(eyebrow,name,ability);reveal.replaceChildren(orb,copy);reveal.hidden=false;
+      finalMessage=`Odblokowano ${ball.name}. Zapisano w kolekcji.`;
+    }catch(error){finalMessage=error instanceof Error?error.message:'Nie udało się otworzyć skrzynki.';}
+    finally{
+      crateOpening=false;crate.classList.remove('is-opening');renderCollection();
+      el('collection-note').textContent=finalMessage||getProfileMessage();
+    }
+  };
   window.addEventListener('orbita-profile-updated',renderCollection);
   el('open-collection').onclick=()=>{el('profile-strip').hidden=true;el('network-status').hidden=true;el('mode-options').hidden=true;el('join-controls').hidden=true;el('room-actions').hidden=true;el('collection-panel').hidden=false;renderCollection();};
   el('collection-back').onclick=()=>{el('collection-panel').hidden=true;el('profile-strip').hidden=false;el('network-status').hidden=false;el('mode-options').hidden=false;el('join-controls').hidden=!onlineConfigured;};
+  el('ball-shop-tab').onclick=()=>{collectionSection='balls';renderCollection();};
+  el('cosmetic-shop-tab').onclick=()=>{collectionSection='cosmetics';renderCollection();};
   void refreshProfile().catch(()=>renderCollection());
   function setAngleDegrees(degrees:number){
     const value=Math.max(-180,Math.min(180,Math.round(degrees)));
@@ -107,12 +158,12 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     if(cardsKey!==key){
       cardsKey=key;cards.replaceChildren();
       if(choosing){
-        const ids=collectionView?MATCH_BALLS.map(ball=>ball.id):data.offer;
+        const ids=collectionView?data.ownedBalls:data.offer;
         for(const id of ids){
           const def=MATCH_BALLS.find(ball=>ball.id===id)!;
           const button=document.createElement('button');button.type='button';button.className='ball-card';
           button.setAttribute('aria-pressed',String(selectedId===id));
-          button.innerHTML=`<span class="ball-card-orb" style="--orb:${def.color}"></span><strong>${def.name}</strong><small>${def.trigger.toUpperCase()} · ${def.hp} HP</small><span class="ball-card-ability">${def.ability}</span>`;
+          button.innerHTML=`<span class="ball-card-orb" style="--orb:${def.color}"></span><strong>${def.name}</strong><small>${def.trigger.toUpperCase()} · ${def.hp} HP</small><span class="ball-card-ability">${def.ability}</span><span class="ball-card-weakness">Słabość: ${def.weakness}</span>`;
           button.onclick=()=>{selectedId=id;pickerError='';renderPicker();};cards.append(button);
         }
       }else{

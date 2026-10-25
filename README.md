@@ -1,6 +1,6 @@
 # Orbita: Starcie
 
-Autorska przeglądarkowa gra z automatycznymi pojedynkami kulek. Działa gra lokalna, sieciowe 1v1 i 2v2 oraz trening z botem. Przygotowanie meczu ma dwa osobne kroki: wybór kulki, a potem ustawienie kierunku. W sieciowym meczu każdy zatwierdza jedną z trzech losowych kulek albo raz na mecz wybiera z dostępnej kolekcji; kierunek wybiera po zakończeniu wyboru przez wszystkich graczy. W hostowanym 1v1 profil gościa zapisuje monety i odcień kulki po zakończonych meczach; bez dostawcy reklamy się nie wyświetlają. Czternaście autorskich kulek ma odrębne moce: wiązki, pociski, sieci, tarcze i inne efekty. Laser, promienie, pajęczyny, broń kulek i ślady pocisków animują walkę, a utrata HP pojawia się w dymkach nad areną. Arena jest kwadratowa 20 × 20 i nie pokazuje licznika czasu; wewnętrzna dogrywka chroni tylko przed zablokowanym pojedynkiem. Zasady i parametry są własną interpretacją, nie statystykami Roblox.
+Autorska przeglądarkowa gra z automatycznymi pojedynkami kulek. Działa gra lokalna, sieciowe 1v1 i 2v2 oraz trening z botem. Przygotowanie meczu ma dwa osobne kroki: wybór kulki, a potem ustawienie kierunku. W hostowanym 1v1 profil gościa zapisuje monety, odblokowane kulki i odcień po zakończonych meczach. Nowy profil zaczyna z trzema kulkami; kolejne zdobywa się ze skrzynki za 300 monet, która losuje jedną nieodblokowaną kulkę bez duplikatów. Wygrana daje 100 monet, remis 75, a przegrana 50. Starsze profile zachowują dotychczasową kolekcję. W każdej rundzie online losowane są trzy posiadane kulki albo raz na mecz można wybrać dowolną posiadaną kulkę. W trybie lokalnym wszystkie kulki są dostępne do testów. Bez dostawcy reklamy się nie wyświetlają. Szesnaście autorskich kulek ma odrębne moce: pociski, sieci, tarcze i inne efekty. Broń kulek i ślady pocisków animują walkę, a utrata HP pojawia się w dymkach nad areną. Arena jest kwadratowa 20 × 20 i nie pokazuje licznika czasu; wewnętrzna dogrywka chroni tylko przed zablokowanym pojedynkiem. Zasady, ceny i parametry są własną interpretacją, nie statystykami Roblox.
 
 ## Uruchomienie
 
@@ -24,7 +24,7 @@ node node_modules/tsx/dist/cli.mjs scripts/bench.ts
 
 Symulacja i moce są w `src/simulation/world.ts`, parametry kulek w `src/shared/config.ts`, logika meczów w `src/server/rooms.ts`, a grafika w `src/client/arena.ts`. Szczegółowy zakres i źródła: [PROJECT_SPEC.md](PROJECT_SPEC.md). Stan projektu i dalsze kroki: [PROGRESS.md](PROGRESS.md), [HANDOFF.md](HANDOFF.md).
 
-Gra działa lokalnie. Klient jest też publicznie dostępny na [Vercel](https://ballgame-tawny.vercel.app/). Hostowane 1v1 korzysta z `/api/room`, a profil i kosmetyki z `/api/profile` oraz Firebase Realtime Database. Tryby 2v2 i trening z botem nadal działają na lokalnym serwerze WebSocket. Test wizualny na fizycznym telefonie oraz pomiar FPS WebGL nie zostały jeszcze wykonane.
+Gra działa lokalnie. Klient jest też publicznie dostępny na [Vercel](https://ballgame-tawny.vercel.app/), połączonym z gałęzią `main` repozytorium GitHub. Hostowane 1v1 korzysta z `/api/room`, a profil, skrzynka kulek i kosmetyki z `/api/profile` oraz Firebase Realtime Database. Tryby 2v2 i trening z botem nadal działają na lokalnym serwerze WebSocket. Test wizualny na fizycznym telefonie oraz pomiar FPS WebGL nie zostały jeszcze wykonane.
 
 ## Wdrożenie
 

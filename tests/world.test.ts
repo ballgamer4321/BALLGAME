@@ -74,7 +74,7 @@ describe('local duel simulation', () => {
   });
 
   it('keeps teammates unharmed on contact in 2v2', () => {
-    const world=createWorld(1,['amber','jade','amber','jade'],[0,Math.PI,0,Math.PI]);
+    const world=createWorld(1,['jade','orange','jade','orange'],[0,Math.PI,0,Math.PI]);
     const [a,,ally]=world.balls;
     a.x=-1.2;ally.x=1.2;a.y=ally.y=0;a.vx=20;ally.vx=-20;a.vy=ally.vy=0;
     world.balls[1].x=7;world.balls[1].y=7;world.balls[1].vx=0;world.balls[1].vy=0;
@@ -97,7 +97,7 @@ describe('local duel simulation', () => {
     expect(b.hp).toBe(90);
   });
 
-  it('can re-arm damage only after separation', () => {
+  it('re-arms damage after separation and the 0.5 s attacker cooldown', () => {
     const world = createWorld(4);
     const [a, b] = world.balls;
     a.x = -a.radius; b.x = b.radius; a.y = b.y = 0;
@@ -106,6 +106,12 @@ describe('local duel simulation', () => {
     a.x = -2; b.x = 2; a.vx = 170; b.vx = -170;
     stepWorld(world);
     expect(world.hits).toBe(2);
+    expect(a.hp).toBe(90);
+    a.x = -7; b.x = 7; a.vx = b.vx = a.vy = b.vy = 0;
+    stepWorld(world);
+    for (let i = 0; i < 28; i++) stepWorld(world);
+    a.x = -a.radius; b.x = b.radius; a.y = b.y = 0; a.vx = 1; b.vx = -1;
+    stepWorld(world);
     expect(a.hp).toBe(80);
   });
 

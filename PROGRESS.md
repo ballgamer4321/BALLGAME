@@ -1,19 +1,37 @@
 # Postęp — Orbita: Starcie
 
-Aktualizacja: 2026-10-25. Etap 7 — oprawa i telefony: IN_PROGRESS. Etapy 1–6 oraz 8–9: DONE. Podetap poprawy modeli kulek zakończony i opublikowany.
+Aktualizacja: 2026-10-25. Etap 7 — oprawa i telefony: IN_PROGRESS. Etapy 1–6 oraz 8–9: DONE. Rozbudowa katalogu do 54 kulek jest w toku, w sześciu zapisanych partiach; nieopublikowana.
+
+## Aktualne zadanie — katalog 54 kulek
+
+- 1/6: DONE — wspólne reguły statusów i działające kule Blade, Axe, Burst, Charge, Glass, Machine Gun, Poison Spike, Spider i Thief. Katalog wzrósł z 9 do 16 grywalnych kulek.
+- 2/6: Vampire, Cell, Chess, Dice, Electric, Hook, Ice Cone, Laser i Reforge.
+- 3/6: Snake, Zone, Apple, Beam, Big Spike, Bow, Cannon, Electro King i Frost.
+- 4/6: Range, Virus, WDC, Bomb, Conductor, Acid, Cactus, Fibonacci i Harpoon.
+- 5/6: Hive, Potion, Ray, Shackles, Spear, Verity, Gravity, Mirror i Magnet.
+- 6/6: Portal, Echo, Volcano, Sonic, Chrono, Shield, Comet, Seed i Parry; HUD testowy, balance runs i testy interakcji całości.
+- Liczby z promptu są założeniami własnego balansu. Arena zostaje 20×20; rzeczywiste statystyki są skalowane do obecnego rdzenia. Nie dodawać niezaimplementowanej kuli do wyboru ani sklepu.
+- Poprzedni stan przed tym zadaniem: roster 9, testy 50/50, TypeScript i build OK; ostatni commit `c44d624`.
 
 ## Działa
 
-- Lokalna walka, multiplayer 1v1/2v2, bot, 14 kulek ze zdolnościami, celowanie, rewanże i kolekcja Firebase.
-- Każda kulka ma charakterystyczny model wychodzący poza jej obrys. Topór ma teraz wyraźny drewniany trzonek, zakrzywione metalowe ostrze z jasną krawędzią i krąży wokół kulki; przy niskim HP przyspiesza zgodnie z inspiracją Robloxową wersją. Są też m.in. tarcza, kły, kryształ, orbitujące odłamki, lufy, armata i pająk z 8 odnóżami.
+- Lokalna walka, multiplayer 1v1/2v2, bot, 16 dostępnych kulek ze zdolnościami, celowanie, rewanże, profil Firebase, sklep i kolekcja kosmetyczna.
+- Modele dostępnych kulek mają charakterystyczne sylwetki. Topór ma drewniany trzonek, zakrzywione metalowe ostrze i własne trafienia; przy niskim HP przyspiesza zgodnie z inspiracją Robloxową wersją. Pięć kulek — Wiązka, Pryzmat, Taran, Karabin i Pulsar — wycofano tymczasowo z katalogu, wyboru, sklepu i ofert meczowych, aby zastąpić je nowymi.
+- Ostrze topora działa teraz jako osobna broń: krąży przy ziemi, trafia wroga niezależnie od zderzenia kulek, a przy utracie HP obraca się szybciej i zadaje do 12 obrażeń. Obrażenia zwykłego zderzenia pozostają bez bonusu topora.
+- Główny ekran ma teraz lokalny font Press Start 2P, tytuł BALL VS BALL oraz przyciemnioną arenę z kompaktowym panelem trybów; font i licencja OFL są dołączone lokalnie.
 - Broń się obraca lub śledzi przeciwnika; odłamki zastępują pulsujące efekty mocy. Pauza i reduced motion ograniczają ruch.
 
 ## Weryfikacja i wdrożenie
 
-- TypeScript, build Vite i `git diff --check` — OK dla poprawki topora; chunk Three.js 497,65 kB, bez ostrzeżenia o rozmiarze. Wcześniej 48/48 testów.
+- Stan partii 1/6: dziewięć działających zdolności i wspólne statusy (trucizna do 3 stosów, podpalenie, najmocniejsze spowolnienie z limitem 40%, okno odporności CC), limity pułapek/odłamków oraz cooldowny trafień. Burst zachowuje spowolnienie; Machine Gun przeładowuje się dokładnie 1,5 s. Nowe kule pojawiają się w katalogu i selekcji po odblokowaniu.
+- Pełne testy 59/59, TypeScript, build Vite i `git diff --check` — OK. Testy przechodzą wszystkie pary 16 kulek i sprawdzają m.in. czas przeładowania, statusy, aktywacje, limity i wygaśnięcia. Chunk Three.js 497,66 kB.
 - Kod modeli: GitHub `main`, commit `a3912d4`; Vercel production READY, deployment `dpl_GebA7kdKaFychEQNuoJqxns36wPb`. Alias `https://ballgame-tawny.vercel.app/`: HTTP 200; `/api/room`: `online:true`; nowy chunk klienta: HTTP 200.
-- Nadal nie wykonano ręcznej kontroli obrazu, widoków 360×800/landscape ani pomiaru FPS. Nie omijać wcześniejszej blokady narzędzia przeglądarki.
+- Nowy sklep nie jest jeszcze wdrożony; produkcja nadal zawiera wersję przed sklepem. Nadal nie wykonano ręcznej kontroli obrazu, widoków 360×800/landscape ani pomiaru FPS. Nie omijać wcześniejszej blokady narzędzia przeglądarki.
+
+Nowa funkcja: skrzynka do odblokowywania kulek i ekonomia monet. Założenia: start z 3 kulkami, wygrana +100, remis +75, porażka +50, skrzynka 300 monet; jedno losowanie wybiera jedną nieposiadaną kulkę, bez duplikatów. Katalog 54 kulek pozostaje osobnym zadaniem etapowym; partia 1/6 jest gotowa, a jej kod wraz ze skrzynką przygotowano do publikacji przez GitHub → Vercel.
+
+Weryfikacja funkcji skrzynki: 59/59 testów, TypeScript, Vite build i `git diff --check` — OK. Wynik losuje serwer w transakcji Firebase i zapisuje kulkę razem z opłatą. Ręczny test interfejsu nie był wykonywany.
 
 ## Dokładny następny krok
 
-Wypchnąć i opublikować aktualną poprawkę topora, jeśli repozytorium i Vercel są dostępne. Potem wykonać brakujące QA etapu 7 dla małego i poziomego ekranu oraz pomiar FPS, gdy dostępna będzie dozwolona ścieżka. Nie oznaczać etapu 7 jako DONE przed tą kontrolą.
+Plan wszystkich 54 kulek i mechanik jest zachowany w `docs/BALL_ROSTER_PLAN.md`; etapy i reguły są też w `PROJECT_SPEC.md`. Następna implementacja to wyłącznie partia 2/6. Rozpocząć ją dopiero po kolejnym poleceniu użytkownika „kontynuuj”. Nie pushować ani nie wdrażać.

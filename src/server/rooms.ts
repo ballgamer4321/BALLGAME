@@ -1,4 +1,5 @@
 import { MATCH_BALLS } from '../shared/config.js';
+import { STARTER_BALL_IDS } from '../shared/progression.js';
 import { randomUUID } from 'node:crypto';
 import { seededRandom } from '../shared/random.js';
 import { createWorld, stepWorld, type World } from '../simulation/world.js';
@@ -8,7 +9,7 @@ export type RoomMode = '1v1' | '2v2' | 'bot';
 export interface Room {
   code: string; matchId: string; mode: RoomMode; players: string[]; ready: Set<string>; disconnected: Map<string, number>; forfeited: Set<string>; phase: Phase;
   world: World | null; seed: number; clock: number; deadline: number; idle: number;
-  round: number; score: [number, number]; offers: Record<string,string[]>;
+  round: number; score: [number, number]; offers: Record<string,string[]>; ownedBalls: Record<string,string[]>;
   picks: Record<string,string>; angles: Record<string,number>;
   collectionUsed: Set<string>; rematch: Set<string>;
 }
@@ -26,11 +27,42 @@ export function serializeRoom(room: Room): StoredRoom {
 
 export function deserializeRoom(data: StoredRoom): Room {
   // Realtime Database omits empty arrays and objects when it stores a room.
+  const allBallIds = MATCH_BALLS.map(ball => ball.id);
+  const validBallIds = new Set<string>(allBallIds);
+  const ownedBalls = Object.fromEntries(data.players.map(player => {
+    const stored = data.ownedBalls?.[player] ?? allBallIds;
+    const validOwned = Array.isArray(stored) ? stored.filter((id): id is string => validBallIds.has(id)) : [];
+    return [player, [...new Set<string>([...STARTER_BALL_IDS, ...validOwned])]];
+  }));
+  const offers = Object.fromEntries(Object.entries(data.offers ?? {}).map(([player, ids]) => [
+    player, (Array.isArray(ids) ? ids : []).filter((id): id is string => validBallIds.has(id)),
+  ]));
+  const picks = { ...(data.picks ?? {}) };
+  for (const [player, id] of Object.entries(picks)) {
+    if (validBallIds.has(id)) continue;
+    if (data.phase === 'select') delete picks[player];
+    else picks[player] = ownedBalls[player]?.[0] ?? MATCH_BALLS[0].id;
+  }
+  const world = data.world ? { ...data.world,
+    balls: data.world.balls.map(ball => ({ ...ball, normalSpeed: ball.normalSpeed ?? Math.hypot(ball.vx, ball.vy),
+      poisonStacks: ball.poisonStacks ?? (ball.poisonedUntil > data.world!.tick ? [{ expiresAt: ball.poisonedUntil, nextDamageAt: ball.poisonTick ?? data.world!.tick + 30 }] : []),
+      burnUntil: ball.burnUntil ?? 0, burnNextDamageAt: ball.burnNextDamageAt ?? 0,
+      slowEffects: ball.slowEffects ?? (ball.slowedUntil > data.world!.tick ? [{ source: 'legacy', factor: 0.5, expiresAt: ball.slowedUntil }] : []),
+      slowFactor: ball.slowFactor ?? (ball.slowedUntil > data.world!.tick ? 0.5 : 1),
+      stunnedUntil: ball.stunnedUntil ?? 0, controlImmuneUntil: ball.controlImmuneUntil ?? 0, stunVx: ball.stunVx ?? 0, stunVy: ball.stunVy ?? 0,
+      burstAimUntil: ball.burstAimUntil ?? 0, burstDirection: ball.burstDirection ?? 0, chargeStartedAt: ball.chargeStartedAt ?? 0,
+      machineAmmo: ball.machineAmmo ?? 15, machineReloadUntil: ball.machineReloadUntil ?? 0, machineNextShotAt: ball.machineNextShotAt ?? 0,
+      bladeCount: ball.bladeCount ?? 1, bladeNextGrowAt: ball.bladeNextGrowAt ?? 240, bladeAngle: ball.bladeAngle ?? 0,
+      bladeNextHitAt: ball.bladeNextHitAt ?? Array(data.world!.balls.length).fill(0), glassNextBurstAt: ball.glassNextBurstAt ?? 0,
+      contactNextHitAt: ball.contactNextHitAt ?? {}, axeAngle: ball.axeAngle ?? 0,
+      axeNextHitAt: ball.axeNextHitAt ?? Array(data.world!.balls.length).fill(0) })),
+    events: data.world.events ?? [], projectiles: data.world.projectiles ?? [], lasers: data.world.lasers ?? [],
+    webs: (data.world.webs ?? []).map(web => ({ ...web, createdAt: web.createdAt ?? 0, hitSlots: web.hitSlots ?? [], nextDamageAt: web.nextDamageAt ?? {} })),
+    spikes: data.world.spikes ?? [], shardHitCounts: data.world.shardHitCounts ?? {}, nextShardBurstId: data.world.nextShardBurstId ?? 1,
+    contacts: new Set(data.world.contacts ?? []) } : null;
   return { ...data, matchId: data.matchId ?? `legacy_${data.code}_${data.seed}`, ready: new Set(data.ready ?? []), disconnected: new Map(data.disconnected ?? []),
     forfeited: new Set(data.forfeited ?? []), collectionUsed: new Set(data.collectionUsed ?? []), rematch: new Set(data.rematch ?? []),
-    offers: data.offers ?? {}, picks: data.picks ?? {}, angles: data.angles ?? {},
-    world: data.world ? { ...data.world, events: data.world.events ?? [], projectiles: data.world.projectiles ?? [], lasers: data.world.lasers ?? [], webs: data.world.webs ?? [],
-      contacts: new Set(data.world.contacts ?? []) } : null };
+    offers, ownedBalls, picks, angles: data.angles ?? {}, world };
 }
 export class Rooms {
   readonly rooms = new Map<string, Room>();
@@ -44,16 +76,22 @@ export class Rooms {
     for (const player of room.players) this.membership.set(player, room.code);
     return room;
   }
-  create(player: string, code: string, mode: RoomMode = '1v1'): Room {
+  private normalizeOwnedBalls(ballIds?: readonly string[]) {
+    const valid = new Set<string>(MATCH_BALLS.map(ball => ball.id));
+    const selected = ballIds ? ballIds.filter((id): id is typeof MATCH_BALLS[number]['id'] => valid.has(id)) : MATCH_BALLS.map(ball => ball.id);
+    return [...new Set<string>([...STARTER_BALL_IDS, ...selected])];
+  }
+  create(player: string, code: string, mode: RoomMode = '1v1', ownedBalls?: readonly string[]): Room {
     if (!/^[A-Z0-9]{6}$/.test(code) || this.rooms.has(code) || this.membership.has(player) || this.rooms.size >= 100 || !['1v1','2v2','bot'].includes(mode)) throw new Error('Nie można utworzyć pokoju');
-    const room: Room = {code,matchId:randomUUID(),mode,players:[player],ready:new Set(),disconnected:new Map(),forfeited:new Set(),phase:'lobby',world:null,seed:0,clock:0,deadline:0,idle:0,round:0,score:[0,0],offers:{},picks:{},angles:{},collectionUsed:new Set(),rematch:new Set()};
-    if(mode==='bot'){const bot=`bot:${code}`;room.players.push(bot);room.ready.add(bot);this.membership.set(bot,code);}
+    const room: Room = {code,matchId:randomUUID(),mode,players:[player],ready:new Set(),disconnected:new Map(),forfeited:new Set(),phase:'lobby',world:null,seed:0,clock:0,deadline:0,idle:0,round:0,score:[0,0],offers:{},ownedBalls:{},picks:{},angles:{},collectionUsed:new Set(),rematch:new Set()};
+    room.ownedBalls[player] = this.normalizeOwnedBalls(ownedBalls);
+    if(mode==='bot'){const bot=`bot:${code}`;room.players.push(bot);room.ready.add(bot);room.ownedBalls[bot]=this.normalizeOwnedBalls();this.membership.set(bot,code);}
     this.rooms.set(code,room); this.membership.set(player,code); return room;
   }
-  join(player:string,code:string):Room {
+  join(player:string,code:string,ownedBalls?: readonly string[]):Room {
     const room=this.rooms.get(code);
     if (!room || room.phase!=='lobby' || room.players.length>=(room.mode==='2v2'?4:2) || this.membership.has(player)) throw new Error('Nie można dołączyć');
-    room.players.push(player); this.membership.set(player,code); room.idle=room.clock; return room;
+    room.players.push(player); room.ownedBalls[player]=this.normalizeOwnedBalls(ownedBalls); this.membership.set(player,code); room.idle=room.clock; return room;
   }
   forPlayer(player:string):Room {
     const room=this.rooms.get(this.membership.get(player) ?? '');
@@ -74,7 +112,7 @@ export class Rooms {
     room.round++; room.phase='select'; room.world=null; room.picks={}; room.angles={}; room.offers={};
     const random=seededRandom((room.seed+room.round*7919)>>>0);
     for(const player of room.players) {
-      const pool=MATCH_BALLS.map(b=>b.id);
+      const pool=[...(room.ownedBalls[player] ?? MATCH_BALLS.map(ball => ball.id))];
       for(let i=pool.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
       room.offers[player]=pool.slice(0,3);
       if(player.startsWith('bot:') || room.forfeited.has(player)){
@@ -88,7 +126,7 @@ export class Rooms {
     const room=this.forPlayer(player);
     if(room.phase!=='select' || room.picks[player] || !MATCH_BALLS.some(b=>b.id===id) ||
       (angle!==undefined && (!Number.isFinite(angle) || angle< -Math.PI || angle>Math.PI))) throw new Error('Niedozwolony wybór');
-    if(collection){if(room.collectionUsed.has(player)) throw new Error('Wybór z kolekcji wykorzystany');room.collectionUsed.add(player);}
+    if(collection){if(room.collectionUsed.has(player)) throw new Error('Wybór z kolekcji wykorzystany');if(!room.ownedBalls[player]?.includes(id))throw new Error('Kulki nie ma w kolekcji');room.collectionUsed.add(player);}
     else if(!room.offers[player].includes(id)) throw new Error('Kulki nie ma w ofercie');
     room.picks[player]=id;room.idle=room.clock;
     if(angle!==undefined)room.angles[player]=angle;
@@ -170,8 +208,8 @@ export class Rooms {
   snapshot(player:string){
     const room=this.forPlayer(player),world=room.world;
     return {code:room.code,matchId:room.matchId,mode:room.mode,slot:room.players.indexOf(player),phase:room.phase,round:room.round,score:[...room.score],deadline:room.deadline?room.deadline-room.clock:0,
-      offer:room.offers[player]??[],pick:room.picks[player]??null,angleLocked:room.angles[player]!==undefined,collectionUsed:room.collectionUsed.has(player),rematchReady:room.rematch.size,rematchAvailable:room.forfeited.size===0,
+      offer:room.offers[player]??[],ownedBalls:room.ownedBalls[player]??[],pick:room.picks[player]??null,angleLocked:room.angles[player]!==undefined,collectionUsed:room.collectionUsed.has(player),rematchReady:room.rematch.size,rematchAvailable:room.forfeited.size===0,
       players:room.players.map((id,slot)=>({ready:room.ready.has(id),chosen:!!room.picks[id],connected:!room.disconnected.has(id)&&!room.forfeited.has(id),bot:id.startsWith('bot:'),team:slot%2})),
-      world:world?{tick:world.tick,seed:world.seed,phase:world.phase,balls:world.balls.map(b=>({...b})),winner:world.winner,reason:world.reason,hits:world.hits,events:world.events.map(e=>({...e})),projectiles:world.projectiles.map(p=>({...p})),lasers:world.lasers.map(laser=>({...laser,nextHitAt:{...laser.nextHitAt}})),webs:world.webs.map(web=>({...web,hitSlots:[...web.hitSlots]})),contacts:[...world.contacts],collisionLimitHits:world.collisionLimitHits}:null};
+      world:world?{tick:world.tick,seed:world.seed,phase:world.phase,balls:world.balls.map(b=>({...b})),winner:world.winner,reason:world.reason,hits:world.hits,events:world.events.map(e=>({...e})),projectiles:world.projectiles.map(p=>({...p})),lasers:world.lasers.map(laser=>({...laser,nextHitAt:{...laser.nextHitAt}})),webs:world.webs.map(web=>({...web,hitSlots:[...web.hitSlots],nextDamageAt:{...web.nextDamageAt}})),spikes:world.spikes.map(spike=>({...spike})),shardHitCounts:{...world.shardHitCounts},nextShardBurstId:world.nextShardBurstId,contacts:[...world.contacts],collisionLimitHits:world.collisionLimitHits}:null};
   }
 }

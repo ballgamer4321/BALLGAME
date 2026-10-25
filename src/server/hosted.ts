@@ -20,7 +20,7 @@ export class HostedError extends Error {
 
 export type HostedAction = {
   type: string; mode?: string; code?: string; token?: string;
-  id?: string; collection?: boolean; angle?: number; profileId?: string;
+  id?: string; collection?: boolean; angle?: number; profileId?: string; ownedBalls?: string[];
 };
 export type HostedReply = ({ type: 'state'; token?: string } & ReturnType<Rooms['snapshot']>) | { type: 'left' };
 
@@ -77,7 +77,7 @@ export async function handleHostedAction(store: HostedStore, action: HostedActio
       const code = randomBytes(3).toString('hex').toUpperCase();
       const player = randomUUID(), token = randomBytes(24).toString('hex');
       const rooms = new Rooms(Number(process.env.WINS_TO_MATCH || 3));
-      const room = rooms.create(player, code, '1v1');
+      const room = rooms.create(player, code, '1v1', action.ownedBalls);
       const match = { room: serializeRoom(room), sessions: { [token]: player }, profiles: action.profileId ? { [player]: action.profileId } : {}, lastSeen: { [player]: now }, updatedAt: now };
       if (await store.create(code, match)) return { type: 'state' as const, token, ...rooms.snapshot(player) };
     }
@@ -91,7 +91,7 @@ export async function handleHostedAction(store: HostedStore, action: HostedActio
     return store.transact<HostedReply>(code, current => {
       if (!current) throw new HostedError('Nie znaleziono pokoju', 404);
       const { rooms } = restore(current, now);
-      const room = gameAction(() => rooms.join(player, code));
+      const room = gameAction(() => rooms.join(player, code, action.ownedBalls));
       current.sessions[token] = player;
       current.profiles ??= {};
       if (action.profileId) current.profiles[player] = action.profileId;

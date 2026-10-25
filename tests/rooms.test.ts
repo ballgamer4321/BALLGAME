@@ -54,6 +54,42 @@ it('starts immediately after both players confirm a ball and direction', () => {
   expect(Math.atan2(ball.vy,ball.vx)).toBeCloseTo(0.4);
 });
 
+it('limits online offers and the free collection pick to balls owned by each player', () => {
+  const rooms = new Rooms();
+  rooms.create('a', 'OWNED1', '1v1', ['amber', 'jade', 'violet', 'steel']);
+  rooms.join('b', 'OWNED1', ['amber', 'jade', 'violet']);
+  rooms.setReady('a', 42); rooms.setReady('b', 42);
+  const a = rooms.snapshot('a'), b = rooms.snapshot('b');
+  expect(a.ownedBalls).toEqual(['jade', 'orange', 'pink', 'steel']);
+  expect(a.offer).toHaveLength(3);
+  expect(a.offer.every(id => a.ownedBalls.includes(id))).toBe(true);
+  expect(b.offer.every(id => b.ownedBalls.includes(id))).toBe(true);
+  expect(() => rooms.select('a', 'axe', true)).toThrow('Kulki nie ma w kolekcji');
+  const unofferedOwnedBall = a.ownedBalls.find(id => !a.offer.includes(id))!;
+  rooms.select('a', unofferedOwnedBall, true);
+  rooms.select('b', b.offer[0]);
+  expect(rooms.snapshot('a').collectionUsed).toBe(true);
+});
+
+it('removes retired ball ids from stored rooms and their current offers', () => {
+  const rooms = new Rooms();
+  rooms.create('a', 'OLD123', '1v1'); rooms.join('b', 'OLD123');
+  const oldRoom = rooms.forPlayer('a');
+  oldRoom.phase = 'select';
+  oldRoom.ownedBalls = { a: ['amber', 'jade', 'beam'], b: ['gold', 'machine'] };
+  oldRoom.offers = { a: ['beam', 'violet', 'steel'], b: ['gold', 'machine', 'axe'] };
+  oldRoom.picks = { a: 'amber' };
+  const restored = new Rooms();
+  restored.importRoom(serializeRoom(oldRoom));
+  const a = restored.snapshot('a'), b = restored.snapshot('b');
+  expect(a.ownedBalls).toEqual(['jade', 'orange', 'pink']);
+  expect(b.ownedBalls).toEqual(['jade', 'orange', 'pink']);
+  expect(a.offer).toEqual(['steel']);
+  expect(b.offer).toEqual(['axe']);
+  expect(a.players[0].chosen).toBe(false);
+  expect(['beam', 'violet', 'amber', 'machine', 'gold'].some(id => [...a.offer, ...b.offer].includes(id))).toBe(false);
+});
+
 it('rejects excess membership and cleans up abandoned rooms', () => {
   const rooms = new Rooms();
   rooms.create('a', 'ABC123'); rooms.join('b', 'ABC123');

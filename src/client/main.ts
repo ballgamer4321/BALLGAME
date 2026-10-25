@@ -23,11 +23,11 @@ app.innerHTML = `
         <div class="viewport">
           <div class="arena-label"><span class="live-dot"></span><span id="phase-label">GOTOWOŚĆ</span><span class="arena-number">ARENA 01</span></div>
           <div id="scene"></div>
-          <div id="home-overlay" class="home-overlay"><div class="home-shell"><div class="home-heading"><span class="eyebrow">ORBITA / STARCIE</span><h1 id="home-title">Wybierz tryb gry<span>.</span></h1><p id="home-subtitle">Wybierz kulkę, ustaw kierunek i patrz, jak walczy.</p></div><div class="home-content"><section id="local-panel" class="local-panel" data-side="local" hidden><button id="local-back" class="back-button" type="button">← Wróć do trybów</button><span class="eyebrow">TRENING LOKALNY</span><h2 id="local-step-title">Wybierz kulki · krok 1/2</h2><span id="status" class="status">Gotowe</span><p id="hint" class="hint">Wybierz kulki i kierunek startowy.</p><div id="local-aim" class="aim-picker"><div id="local-ball-selection"><div class="local-side-tabs" role="group" aria-label="Wybierz stronę"><button type="button" data-side="local" aria-pressed="true">Twoja kulka</button><button type="button" data-side="rival" aria-pressed="false">Rywal</button></div><div class="local-choice-pair"><div><label for="local-ball">Twoja kulka</label><select id="local-ball">${MATCH_BALLS.map(b => `<option value="${b.id}">${b.name} · ${b.ability}</option>`).join('')}</select></div><div><label for="rival-ball">Rywal</label><select id="rival-ball">${MATCH_BALLS.map(b => `<option value="${b.id}" ${b.id === 'jade' ? 'selected' : ''}>${b.name} · ${b.ability}</option>`).join('')}</select></div></div></div><div id="local-direction-step" hidden><button id="local-balls-back" class="back-button" type="button">← Wróć do kulek</button><div class="local-direction-row"><div class="aim-copy"><strong>Przeciągnij po arenie <output id="local-angle">0°</output></strong><span>Celuj od swojej kulki; strzałka pokazuje tor.</span></div></div><p>Walka zacznie się po kliknięciu przycisku. Podczas walki kulki poruszają się same.</p></div></div><button id="start" class="primary">Rozpocznij pojedynek <span>↗</span></button></section></div></div></div>
+          <div id="home-overlay" class="home-overlay"><div class="home-wordmark" aria-hidden="true"><span>BALL VS BALL</span><small>THE GAME / ORBITA ARCADE</small></div><div class="home-shell"><div class="home-heading"><span class="eyebrow">ORBITA / STARCIE</span><h1 id="home-title">Wybierz tryb gry<span>.</span></h1><p id="home-subtitle">Wybierz kulkę, ustaw kierunek i patrz, jak walczy.</p></div><div class="home-content"><section id="local-panel" class="local-panel" data-side="local" hidden><button id="local-back" class="back-button" type="button">← Wróć do trybów</button><span class="eyebrow">TRENING LOKALNY</span><h2 id="local-step-title">Wybierz kulki · krok 1/2</h2><span id="status" class="status">Gotowe</span><p id="hint" class="hint">Wybierz kulki i kierunek startowy.</p><div id="local-aim" class="aim-picker"><div id="local-ball-selection"><div class="local-side-tabs" role="group" aria-label="Wybierz stronę"><button type="button" data-side="local" aria-pressed="true">Twoja kulka</button><button type="button" data-side="rival" aria-pressed="false">Rywal</button></div><div class="local-choice-pair"><div><label for="local-ball">Twoja kulka</label><select id="local-ball">${MATCH_BALLS.map(b => `<option value="${b.id}">${b.name} · ${b.ability}</option>`).join('')}</select></div><div><label for="rival-ball">Rywal</label><select id="rival-ball">${MATCH_BALLS.map(b => `<option value="${b.id}" ${b.id === 'orange' ? 'selected' : ''}>${b.name} · ${b.ability}</option>`).join('')}</select></div></div></div><div id="local-direction-step" hidden><button id="local-balls-back" class="back-button" type="button">← Wróć do kulek</button><div class="local-direction-row"><div class="aim-copy"><strong>Przeciągnij po arenie <output id="local-angle">0°</output></strong><span>Celuj od swojej kulki; strzałka pokazuje tor.</span></div></div><p>Walka zacznie się po kliknięciu przycisku. Podczas walki kulki poruszają się same.</p></div></div><button id="start" class="primary">Rozpocznij pojedynek <span>↗</span></button></section></div></div></div>
           <div class="floor-label">ORBITA <span> / </span> COLLISION LAB</div>
           <div id="result" class="result" hidden role="status"><span class="eyebrow">POJEDYNEK ZAKOŃCZONY</span><h2 id="result-title"></h2><p id="result-detail"></p><button id="replay" class="primary">Przygotuj kolejny pojedynek <span>↗</span></button></div>
         </div>
-        <div class="arena-footer"><span><i></i> KWADRATOWA ARENA <b>20 × 20</b></span><span>ZDERZENIA <b id="hits">0</b></span><span>UKŁAD <b id="seed">#0001</b></span><div class="secondary-controls"><button id="pause" disabled>Ⅱ Pauza</button><button id="speed" aria-label="Zmień szybkość podglądu">Tempo 1×</button><button id="sound" type="button" aria-label="Wycisz dźwięk">♪ Dźwięk</button><button id="effects" type="button" aria-label="Przełącz jakość efektów">✦ Efekty</button></div></div>
+        <div class="arena-footer"><span><i></i> KWADRATOWA ARENA <b>20 × 20</b></span><span>TRAFIENIA <b id="hits">0</b></span><span>UKŁAD <b id="seed">#0001</b></span><div class="secondary-controls"><button id="pause" disabled>Ⅱ Pauza</button><button id="speed" aria-label="Zmień szybkość podglądu">Tempo 1×</button><button id="sound" type="button" aria-label="Wycisz dźwięk">♪ Dźwięk</button><button id="effects" type="button" aria-label="Przełącz jakość efektów">✦ Efekty</button></div></div>
       </section>
     </div>
   </main>`;
@@ -39,7 +39,7 @@ resultMetrics.setAttribute('role', 'group');
 resultMetrics.setAttribute('aria-label', 'Pozostałe zdrowie po pojedynku');
 get('result-detail').after(resultMetrics);
 let seed = 1;
-let localPicks: [string, string] = ['amber', 'jade'];
+let localPicks: [string, string] = ['jade', 'orange'];
 let world = createWorld(seed, localPicks);
 let running = false, paused = false, speed = 1, accumulator = 0;
 let online = false;
@@ -125,7 +125,7 @@ for(const id of ['local-ball','rival-ball'] as const){
   const cards=document.createElement('div');cards.className='ball-card-grid';cards.setAttribute('role','group');cards.setAttribute('aria-label',id==='local-ball'?'Wybierz swoją kulkę':'Wybierz kulkę rywala');
   for(const def of MATCH_BALLS){
     const button=document.createElement('button');button.type='button';button.className='ball-card';button.dataset.ball=def.id;
-    button.innerHTML=`<span class="ball-card-orb" style="--orb:${def.color}"></span><strong>${def.name}</strong><small>${def.trigger.toUpperCase()} · ${def.hp} HP</small><span class="ball-card-ability">${def.ability}</span>`;
+    button.innerHTML=`<span class="ball-card-orb" style="--orb:${def.color}"></span><strong>${def.name}</strong><small>${def.trigger.toUpperCase()} · ${def.hp} HP</small><span class="ball-card-ability">${def.ability}</span><span class="ball-card-weakness">Słabość: ${def.weakness}</span>`;
     button.onclick=()=>{select.value=def.id;select.dispatchEvent(new Event('change'));syncCards();};cards.append(button);
   }
   select.after(cards);
@@ -278,7 +278,7 @@ function finish() {
   const winningBall=world.balls.find(b=>b.id===world.winner);
   const winner = MATCH_BALLS.find(b => b.id === world.winner?.split(':').at(-1));
   get('result-title').textContent = world.balls.length>2 && winningBall ? `Drużyna ${winningBall.team+1} wygrywa` : winner ? `${winner.name} wygrywa` : 'Równe siły. Remis.';
-  get('result-detail').textContent = `${world.reason === 'timeout' ? 'Arena przerwała zablokowaną walkę' : 'Koniec zdrowia'} · ${world.hits} zderzeń`;
+  get('result-detail').textContent = `${world.reason === 'timeout' ? 'Arena przerwała zablokowaną walkę' : 'Koniec zdrowia'} · ${world.hits} trafień`;
   resultMetrics.replaceChildren();
   for (let team = 0; team < 2; team++) {
     const members = world.balls.filter(ball => ball.team === team);
@@ -374,7 +374,7 @@ onlineAim = connectRooms(state => {
   if (!state.world) {
     running = false;
     if (lastNetworkPhase !== state.phase) {
-      world = createWorld(1,Array.from({length:state.mode==='2v2'?4:2},(_,i)=>i%2?'jade':'amber')); arena.reset(world); updateHud();
+      world = createWorld(1,Array.from({length:state.mode==='2v2'?4:2},(_,i)=>i%2?'orange':'jade')); arena.reset(world); updateHud();
       get('status').textContent = state.phase === 'select' ? 'Wybór' : state.phase === 'aim' ? 'Kierunek' : 'Pokój';
       get('hint').textContent = state.phase === 'select' ? 'Wybierz jedną z trzech kulek albo użyj wyboru z kolekcji.' : state.phase === 'aim' ? 'Ustaw kierunek startowy i zatwierdź go przed walką.' : 'Czekam na graczy.';
     }

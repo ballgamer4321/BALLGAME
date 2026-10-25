@@ -167,7 +167,7 @@ function makeBallSignature(id: string, color: string) {
       forward(new THREE.ConeGeometry(0.105, 0.25, 6), steel, [side * 0.34, 0.25, 1.43]);
     }
   }
-  if (id === 'machine') {
+  if (id === 'machine' || id === 'machine-gun') {
     add(new THREE.BoxGeometry(0.68, 0.34, 0.54), dark, [0, 0.1, 0.82]);
     for (const [index, x] of [-0.23, 0.23].entries()) {
       const barrel = new THREE.Group();
@@ -210,6 +210,62 @@ function makeBallSignature(id: string, color: string) {
       leg.userData.restRotation = { x: leg.rotation.x, y: leg.rotation.y, z: leg.rotation.z };
     }
   }
+  if (id === 'blade') {
+    const orbit = new THREE.Group(); orbit.name = 'blade-orbit'; group.add(orbit);
+    const blades: THREE.Group[] = [];
+    for (let index = 0; index < 5; index++) {
+      const sword = new THREE.Group();
+      sword.position.set(0, 0.14, 2.7);
+      sword.rotation.y = index / 5 * Math.PI * 2;
+      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.08, 0.56, 8), wood);
+      grip.rotation.x = Math.PI / 2; grip.position.z = 0.28; grip.castShadow = true; sword.add(grip);
+      const guard = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.08, 0.12), dark);
+      guard.position.z = 0.56; sword.add(guard);
+      const edge = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.68, 6), steel);
+      edge.rotation.x = Math.PI / 2; edge.position.z = 0.93; edge.castShadow = true; sword.add(edge);
+      const inlay = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.58, 5), accent);
+      inlay.rotation.x = Math.PI / 2; inlay.position.set(0, 0, 0.88); sword.add(inlay);
+      orbit.add(sword); blades.push(sword);
+    }
+    orbit.userData.blades = blades;
+  }
+  if (id === 'burst') {
+    add(new THREE.ConeGeometry(0.24, 0.72, 5), accent, [-0.46, 0.14, 1.06], [Math.PI / 2, 0, -0.35]);
+    add(new THREE.ConeGeometry(0.24, 0.72, 5), accent, [0.46, 0.14, 1.06], [Math.PI / 2, 0, 0.35]);
+    add(new THREE.TorusGeometry(0.74, 0.07, 8, 24), steel, [0, 0.14, 0], [Math.PI / 2, 0, 0]);
+  }
+  if (id === 'charge') {
+    add(new THREE.TorusGeometry(1.18, 0.055, 8, 40), accent, [0, 0.16, 0], [Math.PI / 2, 0, 0]);
+    for (let index = 0; index < 4; index++) {
+      const angle = index / 4 * Math.PI * 2;
+      add(new THREE.OctahedronGeometry(0.15), steel, [Math.cos(angle) * 1.2, 0.24, Math.sin(angle) * 1.2]);
+    }
+  }
+  if (id === 'glass') {
+    for (let index = 0; index < 6; index++) {
+      const angle = index / 6 * Math.PI * 2;
+      const shard = add(new THREE.TetrahedronGeometry(0.29), accent,
+        [Math.cos(angle) * 1.08, 0.2 + (index % 2) * 0.12, Math.sin(angle) * 1.08], [0.25, angle, 0.42]);
+      shard.scale.set(0.7, 1.6, 0.65);
+    }
+  }
+  if (id === 'poison-spike') {
+    for (let index = 0; index < 8; index++) {
+      const angle = index / 8 * Math.PI * 2;
+      add(new THREE.ConeGeometry(0.13, 0.72, 6), accent,
+        [Math.cos(angle) * 1.12, 0.12, Math.sin(angle) * 1.12], [Math.sin(angle) * 0.7, 0, -Math.cos(angle) * 0.7]);
+    }
+    add(new THREE.SphereGeometry(0.07, 8, 8), steel, [0, 0.3, 0]);
+  }
+  if (id === 'thief') {
+    for (const side of [-1, 1]) {
+      const knife = new THREE.Group(); knife.position.set(side * 0.62, 0.14, 1.05); knife.rotation.y = side * -0.22; group.add(knife);
+      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.4, 8), wood);
+      handle.rotation.x = Math.PI / 2; handle.position.z = 0.2; knife.add(handle);
+      const blade = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.58, 5), steel);
+      blade.rotation.x = Math.PI / 2; blade.position.z = 0.65; knife.add(blade);
+    }
+  }
   if (id === 'axe') {
     const start = new THREE.Vector3(0.19, 0.14, 0.98);
     const end = new THREE.Vector3(0.56, 0.14, 1.86);
@@ -222,7 +278,10 @@ function makeBallSignature(id: string, color: string) {
     }
     const blade = new THREE.Group();
     blade.position.copy(end);
-    blade.rotation.set(Math.PI / 2, Math.atan2(direction.x, direction.z), 0);
+    const across = new THREE.Vector3(-direction.z, 0, direction.x);
+    const forward = new THREE.Vector3(direction.x, 0, direction.z);
+    const groundPlane = new THREE.Matrix4().makeBasis(across, forward, new THREE.Vector3(0, 1, 0));
+    blade.quaternion.setFromRotationMatrix(groundPlane);
     group.add(blade);
 
     const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.2, 12), steel);
@@ -307,8 +366,10 @@ export class Arena {
   private beamStrips: EnergyStrip[] = [];
   private laserStrips: EnergyStrip[] = [];
   private webVisuals: THREE.Group[] = [];
+  private spikeVisuals: THREE.Group[] = [];
   private fxClock = 0;
   private axeAngles = [0, 0, 0, 0];
+  private axeAngleReady = [false, false, false, false];
   private lowEffects = false;
   private reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -390,9 +451,19 @@ export class Arena {
     for (let i = 0; i < 4; i++) {
       const beam = makeEnergyStrip(); beam.group.visible = false; this.scene.add(beam.group); this.beamStrips.push(beam);
     }
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 16; i++) {
       const laser = makeEnergyStrip(); laser.group.visible = false; this.scene.add(laser.group); this.laserStrips.push(laser);
       const web = makeWebVisual(); web.visible = false; this.scene.add(web); this.webVisuals.push(web);
+    }
+    for (let i = 0; i < 32; i++) {
+      const spike = new THREE.Group(); spike.visible = false;
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.78, 6),
+        new THREE.MeshStandardMaterial({ color: '#8fd174', roughness: 0.34, metalness: 0.24 }));
+      tip.position.y = 0.4; tip.castShadow = true; spike.add(tip);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.3, 0.12, 8),
+        new THREE.MeshStandardMaterial({ color: '#486b38', roughness: 0.62 }));
+      base.position.y = 0.06; spike.add(base);
+      this.scene.add(spike); this.spikeVisuals.push(spike);
     }
     this.observer = new ResizeObserver(() => this.resize());
     this.observer.observe(container);
@@ -481,7 +552,7 @@ export class Arena {
     if (!group || this.abilityIds[index] === abilityId) return;
     const previous = this.abilityGroups[index];
     if (previous) {
-      group.remove(previous);
+      previous.parent?.remove(previous);
       previous.traverse(object => {
         if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
           object.geometry.dispose();
@@ -496,7 +567,9 @@ export class Arena {
     const definition = MATCH_BALLS.find(ball => ball.id === abilityId);
     if (!definition) { this.abilityGroups[index] = null; return; }
     const signature = makeBallSignature(definition.id, definition.color);
-    group.add(signature);
+    if (definition.id === 'axe') this.scene.add(signature);
+    else group.add(signature);
+    this.axeAngleReady[index] = false;
     this.abilityGroups[index] = signature;
   }
 
@@ -574,22 +647,34 @@ export class Arena {
       group.scale.setScalar(b.hp <= 0 ? 0.35 : b.radius / BASIC_BALLS[i%2].radius);
       const signature = this.abilityGroups[i];
       if (signature) {
+        signature.visible = b.hp > 0;
         signature.position.set(0, 0, 0);
         signature.rotation.set(0, 0, 0);
+        if (b.abilityId === 'axe') {
+          // Keep the weapon on the arena floor, independent from the ball's rolling tilt.
+          signature.visible = b.hp > 0;
+          signature.position.set(x, 0.16, y);
+          if (!this.axeAngleReady[i]) {
+            this.axeAngles[i] = b.axeAngle;
+            this.axeAngleReady[i] = true;
+          } else if (!this.reducedMotion.matches) {
+            const difference = Math.atan2(Math.sin(b.axeAngle - this.axeAngles[i]), Math.cos(b.axeAngle - this.axeAngles[i]));
+            this.axeAngles[i] += difference * Math.min(1, delta * 24);
+          }
+          signature.rotation.y = this.reducedMotion.matches ? 0 : -this.axeAngles[i];
+        }
         const enemies = w.balls.filter(candidate => candidate.hp > 0 && candidate.team !== b.team)
           .sort((a, other) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(other.x - b.x, other.y - b.y));
         const target = enemies[0];
-        if (target && ['beam', 'machine', 'cannon', 'orange', 'steel'].includes(b.abilityId ?? ''))
+        if (target && ['beam', 'machine', 'machine-gun', 'cannon', 'orange', 'steel'].includes(b.abilityId ?? ''))
           signature.rotation.y = Math.atan2(target.x - x, target.y - y);
         if (!this.reducedMotion.matches) {
           const spinRate: Record<string, number> = {
             amber: 0.7, jade: 0.52, violet: 0.9, gold: 1.35, cyan: 0.72, pink: 0.9, laser: 0.85,
+            blade: 0.8, charge: 0.16, glass: 0.22, 'poison-spike': 0.24, thief: 0.45,
           };
-          if (b.abilityId === 'axe') {
-            const lostHp = Math.max(0, 1 - b.hp / b.maxHp);
-            this.axeAngles[i] += effectDelta * (4 + lostHp * 7.5);
-            signature.rotation.y = this.axeAngles[i];
-          } else if (spinRate[b.abilityId ?? '']) signature.rotation.y = this.fxClock * spinRate[b.abilityId ?? ''];
+          if (b.abilityId !== 'axe' && spinRate[b.abilityId ?? '']) signature.rotation.y = b.abilityId === 'blade'
+            ? -b.bladeAngle : this.fxClock * spinRate[b.abilityId ?? ''];
           if (b.abilityId === 'spider') {
             signature.rotation.y = this.fxClock * 0.32;
             signature.children.forEach(leg => {
@@ -602,6 +687,12 @@ export class Arena {
           }
           const rotors = signature.userData.rotors as THREE.Group[] | undefined;
           rotors?.forEach(rotor => { rotor.rotation.y = this.fxClock * 18 + (rotor.userData.phase as number); });
+        }
+        if (b.abilityId === 'blade') {
+          signature.rotation.y = this.reducedMotion.matches ? 0 : -b.bladeAngle;
+          const orbit = signature.getObjectByName('blade-orbit');
+          const blades = orbit?.userData.blades as THREE.Group[] | undefined;
+          blades?.forEach((sword, index) => { sword.visible = index < b.bladeCount; });
         }
       }
       const satellite = group.children[1] as THREE.Mesh;
@@ -726,6 +817,18 @@ export class Arena {
       strip.group.scale.set(length, 1, 1);
       strip.marker.position.x = ((this.fxClock * 2.1 + i * 0.31) % 1 - 0.5) * 0.9;
       updateStrip(strip, '#48eaff', 0.96);
+    });
+    this.spikeVisuals.forEach((spike, i) => {
+      const trap = w.spikes[i];
+      spike.visible = !!trap;
+      if (!trap) return;
+      spike.position.set(trap.x, 0, trap.y);
+      spike.rotation.y = ((trap.owner + i) % 2 ? 1 : -1) * 0.32;
+      spike.scale.setScalar(Math.min(1, trap.ttl / 60));
+      const material = (spike.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
+      material.color.set(trap.color);
+      material.emissive.set(trap.color);
+      material.emissiveIntensity = 0.12;
     });
     this.renderer.render(this.scene, this.camera);
   }

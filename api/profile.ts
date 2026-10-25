@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomInt } from 'node:crypto';
 import { firebaseConfigured, firebaseDatabase } from './firebase.js';
 import {
   awardMatch, createProgress, equipCosmetic, normalizeProgress, ProgressError,
-  publicProgress, purchaseCosmetic, type MatchOutcome, type ProgressRecord,
+  publicProgress, purchaseCosmetic, openBallCrate, type MatchOutcome, type ProgressRecord,
 } from '../src/shared/progression.js';
 
 const PROFILE_TOKEN = /^[a-f0-9]{48}$/;
@@ -41,6 +41,26 @@ async function transactProgress(profileId: string, change: (current: ProgressRec
   if (failure) throw failure;
   if (!result.committed || !updated) throw new Error('Nie udało się zapisać profilu');
   return updated;
+}
+
+async function transactBallCrate(profileId: string) {
+  const ref = reference(profileId);
+  let opened: ReturnType<typeof openBallCrate> | undefined;
+  let failure: unknown;
+  const result = await ref.transaction(value => {
+    opened = undefined;
+    failure = undefined;
+    try {
+      opened = openBallCrate(value ? normalizeProgress(value) : createProgress(), randomInt(0, 2 ** 32) / 2 ** 32);
+      return opened.progress;
+    } catch (error) {
+      failure = error;
+      return undefined;
+    }
+  }, undefined, false);
+  if (failure) throw failure;
+  if (!result.committed || !opened) throw new Error('Nie udało się otworzyć skrzynki');
+  return opened;
 }
 
 export async function ensureProgress(profileId: string) {
@@ -84,13 +104,18 @@ export async function POST(request: Request) {
     if (typeof action.type !== 'string' || typeof action.token !== 'string') throw new ProgressError('Nieprawidłowa wiadomość');
     const profileId = progressIdForToken(action.token);
     let progress: ProgressRecord;
+    let reward: ReturnType<typeof openBallCrate>['ball'] | undefined;
     if (action.type === 'load') progress = await ensureProgress(profileId);
     else if (action.type === 'purchase' && typeof action.cosmeticId === 'string') {
       progress = await transactProgress(profileId, current => purchaseCosmetic(current, action.cosmeticId as string));
+    } else if (action.type === 'open-crate') {
+      const opened = await transactBallCrate(profileId);
+      progress = opened.progress;
+      reward = opened.ball;
     } else if (action.type === 'equip' && typeof action.cosmeticId === 'string') {
       progress = await transactProgress(profileId, current => equipCosmetic(current, action.cosmeticId as string));
     } else throw new ProgressError('Nieprawidłowa akcja profilu');
-    return json({ profile: publicProgress(progress) });
+    return json({ profile: publicProgress(progress), ...(reward ? { ball: reward } : {}) });
   } catch (error) {
     if (error instanceof ProgressError) return json({ error: error.message }, error.status);
     if (error instanceof SyntaxError) return json({ error: 'Nieprawidłowa wiadomość.' }, 400);
