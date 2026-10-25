@@ -20,7 +20,7 @@ const AIMED_WEAPON_IDS = new Set([
 ]);
 const MELEE_RING_RADII: Record<string, number> = {
   jade: 1.86, steel: 1.82, violet: 1.78, burst: 1.9, charge: 1.86,
-  'poison-spike': 2.16, axe: 2.72, blade: 2.7, vampire: 1.9, electric: 1.82,
+  'poison-spike': 2.16, axe: 1.65, blade: 1.72, vampire: 1.9, electric: 1.82,
   spider: 1.82, 'big-spike': 2.2, spear: 2.12, parry: 1.95, mirror: 1.9,
 };
 
