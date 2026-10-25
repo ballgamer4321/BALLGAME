@@ -4,7 +4,7 @@ Projekt: `C:\Users\antre\Desktop\ball game`; GitHub `https://github.com/ballgame
 
 ## Stan
 
-Etapy 1–6 i 8–9 są DONE. Etap 7 (oprawa i telefony) pozostaje IN_PROGRESS: brakuje ręcznego QA 360×800/landscape i pomiaru FPS. Najnowsza lokalna zmiana zamienia pulsujące efekty mocy na animowane odłamki i ruch broni: topór krąży, lufy karabinu obracają się, działa celują, Pajęczak animuje nogami, a lasery i sieci poruszają się. Pauza zatrzymuje te animacje; reduced motion pozostawia efekty statyczne. Testy i build lokalnie przechodzą; publikacja w toku.
+Etapy 1–6 i 8–9: DONE. Etap 7 (oprawa i telefony): IN_PROGRESS — wciąż brak ręcznego QA 360×800/landscape i pomiaru FPS. Wdrożone animacje: topór wiruje wokół kulki, lufy karabinu obracają się, działa namierzają wroga, nogi Pajęczaka się ruszają, sieci obracają się, a lasery i wiązki mają ruchome znaczniki. Pulsujące efekty mocy zastąpiono obracającymi się odłamkami. Pauza/reduced-motion ograniczają ruch. Produkcja READY, strona 200, API `/api/room` zwraca `online:true`.
 
 ## Uruchomienie i weryfikacja
 
@@ -17,14 +17,13 @@ Node.js: `C:\Users\antre\.cache\codex-runtimes\codex-primary-runtime\dependencie
 - Serwer: `node node_modules/tsx/dist/cli.mjs src/server/index.ts`
 - Lokalny adres: `http://127.0.0.1:5173/`
 
-W PowerShell, jeśli `node` nie jest w PATH, poprzedź każdą komendę pełną ścieżką do `node.exe` powyżej.
+W PowerShell poprzedź komendy pełną ścieżką do `node.exe`, jeśli `node` nie jest w PATH.
 
-## Najważniejsze pliki i dalsze kroki
+## Pliki i następne kroki
 
-- `src/client/arena.ts` — modele, animacje broni i efekty Three.js.
+- `src/client/arena.ts` — modele, animacje i efekty Three.js.
 - `src/client/main.ts`, `src/client/style.css` — flow, HUD, UI/responsywność.
-- `src/simulation/world.ts`, `src/server/rooms.ts`, `tests/` — symulacja i multiplayer.
-- Wypchnąć zweryfikowany kod na GitHub i poczekać na Vercel READY; sprawdzić produkcyjne API.
-- Dokończyć ręczne QA etapu 7 dla 360×800 i landscape oraz pomiar FPS, gdy dostępna będzie dozwolona ścieżka.
+- `src/simulation/world.ts`, `src/server/rooms.ts`, `tests/` — symulacja, multiplayer i scenariusze.
+- Gdy będzie dozwolona ścieżka, wykonać QA etapu 7 na 360×800 oraz landscape, zmierzyć FPS i dopiero wtedy zmienić status etapu.
 
-Ostatnie testy: 48/48; TypeScript; Vite build; diff check — OK. Obraz i FPS nie były ręcznie sprawdzone. Nie omijać blokady lokalnej karty przeglądarki.
+Ostatnie testy: 48/48; TypeScript; Vite build; diff check — OK. Ręcznego obrazu i FPS nie sprawdzono. Nie obchodzić blokady lokalnej karty przeglądarki.

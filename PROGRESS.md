@@ -1,20 +1,19 @@
 # Postęp — Orbita: Starcie
 
-Aktualizacja: 2026-10-25. Etap 7 — oprawa i telefony: IN_PROGRESS. Etapy 1–6 oraz 8–9: DONE. Bieżący podetap animacji kulek ukończony lokalnie i sprawdzony; publikacja w toku.
+Aktualizacja: 2026-10-25. Etap 7 — oprawa i telefony: IN_PROGRESS. Etapy 1–6 oraz 8–9: DONE. Podetap animacji kulek ukończony i wdrożony.
 
 ## Działa
 
 - Lokalna walka, multiplayer 1v1/2v2, trening z botem, 14 kulek ze zdolnościami, celowanie, rewanże i kolekcja Firebase.
-- Topór obraca się wokół kulki; karabin kręci lufami; laser i wiązka namierzają wroga; Pajęczak animuje odnóża, a pułapki sieciowe obracają się.
-- Pulsujące podświetlenia mocy zastąpiono krótkimi wirującymi odłamkami; lasery i wiązki mają przesuwające się znaczniki ze stałą jasnością.
-- Animacje zatrzymują się przy pauzie i respektują ustawienie ograniczenia ruchu.
+- Topór krąży wokół kulki; lufy karabinu obracają się; działa śledzą przeciwnika; Pajęczak animuje odnóża, a sieci obracają się.
+- Efekty mocy są wirującymi odłamkami zamiast pulsów. Wiązki/lasery mają ruchomy znacznik i stałą jasność. Ruch efektów zatrzymuje się podczas pauzy; ustawienie reduced motion ogranicza animacje.
 
-## Weryfikacja
+## Weryfikacja i wdrożenie
 
 - 48/48 testów, `tsc --noEmit`, produkcyjny build Vite i `git diff --check` — OK.
-- Build: aplikacja 65 kB, chunk Three.js 496 kB; bez ostrzeżenia o pojedynczym zbyt dużym pliku.
-- Ręcznego QA 360×800, landscape ani pomiaru FPS nadal nie wykonano; nie omijać blokady narzędzia przeglądarki.
+- GitHub `main`: commit `5de66cf`. Vercel production READY (`dpl_8Tty6V5ffKNMjGDqmDLtcVG4cL45`); alias `https://ballgame-tawny.vercel.app/` zwraca HTTP 200, `/api/room` `online:true`, nowe klientowe i Three.js chunki zwracają 200.
+- Nadal nie wykonano ręcznego QA 360×800, landscape ani pomiaru FPS. Wcześniej narzędzie zablokowało dostęp do lokalnej karty; nie omijać tej blokady.
 
 ## Dokładny następny krok
 
-Opublikować tę zmianę na GitHub `main`, sprawdzić Vercel production i HTTP, zaktualizować ten raport, a następnie wrócić do brakującego QA etapu 7.
+Dokończyć brakujące QA etapu 7 na 360×800, landscape i sprawdzić FPS, gdy będzie dostępna dozwolona ścieżka. Nie oznaczać etapu 7 jako DONE przed tą kontrolą.
