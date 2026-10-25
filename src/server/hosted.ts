@@ -4,6 +4,7 @@ import { Rooms, serializeRoom, type StoredRoom } from './rooms.js';
 export interface StoredMatch {
   room: StoredRoom;
   sessions: Record<string, string>;
+  profiles?: Record<string, string>;
   lastSeen: Record<string, number>;
   updatedAt: number;
 }
@@ -19,7 +20,7 @@ export class HostedError extends Error {
 
 export type HostedAction = {
   type: string; mode?: string; code?: string; token?: string;
-  id?: string; collection?: boolean; angle?: number;
+  id?: string; collection?: boolean; angle?: number; profileId?: string;
 };
 export type HostedReply = ({ type: 'state'; token?: string } & ReturnType<Rooms['snapshot']>) | { type: 'left' };
 
@@ -71,12 +72,13 @@ export async function handleHostedAction(store: HostedStore, action: HostedActio
   if (!action || typeof action.type !== 'string') throw new HostedError('Nieprawidłowa akcja');
   if (action.type === 'create') {
     if (action.mode !== '1v1') throw new HostedError('Na stronie dostępny jest obecnie tryb 1v1');
+    if (action.profileId !== undefined && !/^[a-f0-9]{64}$/.test(action.profileId)) throw new HostedError('Nieprawidłowy profil');
     for (let attempt = 0; attempt < 8; attempt++) {
       const code = randomBytes(3).toString('hex').toUpperCase();
       const player = randomUUID(), token = randomBytes(24).toString('hex');
       const rooms = new Rooms(Number(process.env.WINS_TO_MATCH || 3));
       const room = rooms.create(player, code, '1v1');
-      const match = { room: serializeRoom(room), sessions: { [token]: player }, lastSeen: { [player]: now }, updatedAt: now };
+      const match = { room: serializeRoom(room), sessions: { [token]: player }, profiles: action.profileId ? { [player]: action.profileId } : {}, lastSeen: { [player]: now }, updatedAt: now };
       if (await store.create(code, match)) return { type: 'state' as const, token, ...rooms.snapshot(player) };
     }
     throw new HostedError('Nie udało się utworzyć pokoju. Spróbuj ponownie.', 503);
@@ -84,12 +86,15 @@ export async function handleHostedAction(store: HostedStore, action: HostedActio
 
   const code = requireCode(action.code);
   if (action.type === 'join') {
+    if (action.profileId !== undefined && !/^[a-f0-9]{64}$/.test(action.profileId)) throw new HostedError('Nieprawidłowy profil');
     const player = randomUUID(), token = randomBytes(24).toString('hex');
     return store.transact<HostedReply>(code, current => {
       if (!current) throw new HostedError('Nie znaleziono pokoju', 404);
       const { rooms } = restore(current, now);
       const room = gameAction(() => rooms.join(player, code));
       current.sessions[token] = player;
+      current.profiles ??= {};
+      if (action.profileId) current.profiles[player] = action.profileId;
       current.lastSeen[player] = now;
       return { next: { ...current, room: serializeRoom(room), updatedAt: now },
         result: { type: 'state' as const, token, ...rooms.snapshot(player) } };

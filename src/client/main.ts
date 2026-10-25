@@ -4,6 +4,7 @@ import { BASIC_BALLS, MATCH_BALLS, RULES } from '../shared/config';
 import { createWorld, stepWorld } from '../simulation/world';
 import { connectRooms } from './network';
 import { GameAudio } from './audio';
+import { getCachedProgress } from './profile';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
@@ -129,7 +130,7 @@ document.querySelectorAll<HTMLButtonElement>('.local-side-tabs button').forEach(
 function start() {
   if (online) return;
   world = createWorld(seed, localPicks, [localAngle, Math.PI]); accumulator = 0;
-  arena.reset(world); running = true; paused = false;
+  arena.reset(world); arena.setBallCosmetic(0, getCachedProgress()?.equippedCosmetic ?? 'aurora'); running = true; paused = false;
   audio.resetRound(); audio.play('start');
   arena.clearAimPreview();
   get('home-overlay').hidden = true;
@@ -314,6 +315,11 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+window.addEventListener('orbita-profile-updated', () => {
+  if (!arena) return;
+  const slot = online ? Number(get('scene').dataset.aimSlot ?? 0) : 0;
+  arena.setBallCosmetic(slot, getCachedProgress()?.equippedCosmetic ?? 'aurora');
+});
 onlineAim = connectRooms(state => {
   if (state.phase === 'fight' && lastNetworkPhase !== 'fight') { audio.resetRound(); audio.play('start'); }
   online = true;
@@ -328,6 +334,8 @@ onlineAim = connectRooms(state => {
     get('home-subtitle').textContent='Możecie zagrać rewanż lub wrócić do menu.';
   }
   get('local-aim').hidden = true;
+  get('scene').dataset.aimSlot = String(state.slot);
+  arena.setBallCosmetic(state.slot, getCachedProgress()?.equippedCosmetic ?? 'aurora');
   get<HTMLButtonElement>('start').disabled = true;
   get<HTMLButtonElement>('pause').disabled = true;
   get<HTMLButtonElement>('speed').disabled = true;

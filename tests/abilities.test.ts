@@ -106,7 +106,8 @@ describe('eight distinct ball abilities', () => {
   it('Echo creates a satellite that strikes once and expires', () => {
     const world = duel('pink', 'violet');
     const [a, b] = world.balls;
-    a.x = -1.3; b.x = 1.3; a.y = b.y = 0;
+    // Keep the target inside Echo's 3-unit strike radius but outside contact.
+    a.x = -1.4; b.x = 1.4; a.y = b.y = 0;
     a.vx = b.vx = a.vy = b.vy = 0;
     stepWorld(world);
     expect(a.echoUntil).toBeGreaterThan(world.tick);

@@ -1,9 +1,12 @@
 import type { Rooms } from '../server/rooms';
 import { MATCH_BALLS } from '../shared/config';
+import { COSMETICS } from '../shared/progression';
+import { buyCosmetic, equipCosmetic, getCachedProgress, getProfileMessage, getProfileToken, isProfileOnline, refreshProfile } from './profile';
+import { adsProvider } from './ads';
 type Snapshot = ReturnType<Rooms['snapshot']>;
 export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void, onAimChange: (angle: number, slot: number) => void, onLocalMode: () => void) {
   const panel = document.createElement('section'); panel.className = 'control-panel home-network';
-  panel.innerHTML = `<p id="network-status" role="status">Kliknij tryb, aby rozpocząć.</p><div id="mode-options" class="mode-options"><button class="mode-card" data-mode="1v1" type="button"><span class="mode-card-icon">◈</span><strong>1 na 1</strong><small>Wyzwanie dla dwóch graczy</small><span class="mode-card-arrow">↗</span></button><button class="mode-card" data-mode="2v2" type="button"><span class="mode-card-icon">✦</span><strong>2 na 2</strong><small>Dwie drużyny, cztery kulki</small><span class="mode-card-arrow">↗</span></button><button class="mode-card" data-mode="bot" type="button"><span class="mode-card-icon">◇</span><strong>Trening z botem</strong><small>Natychmiastowy pojedynek</small><span class="mode-card-arrow">↗</span></button><button class="mode-card" id="local-mode" type="button"><span class="mode-card-icon">◎</span><strong>Gra lokalna</strong><small>Wybierz obie kulki i testuj moce</small><span class="mode-card-arrow">↗</span></button></div><div id="join-controls" class="join-controls"><label for="room-code">Masz kod pokoju?</label><input id="room-code" maxlength="6" autocomplete="off" placeholder="WPISZ KOD"><button id="join-room" type="button">Dołącz do gry ↗</button></div><div id="room-actions" class="room-actions" hidden><div id="room-roster" class="room-roster"></div><button id="ready-room" class="primary" type="button" hidden>Jestem gotowy <span>↗</span></button><div id="round-controls" hidden><p id="score-line"></p><p id="match-summary" hidden></p><button id="rematch" class="primary" type="button" hidden>Rewanż <span>↗</span></button></div><label id="invite-label" for="room-link" hidden>Link zaproszenia</label><input id="room-link" readonly aria-label="Link zaproszenia" hidden><button id="leave-room" class="back-button" type="button" hidden>← Opuść pokój</button></div>`;
+  panel.innerHTML = `<div id="profile-strip" class="profile-strip"><div><span class="eyebrow">PROFIL GOŚCIA</span><strong id="profile-summary">Ładowanie zapisu…</strong></div><button id="open-collection" class="collection-open" type="button">Kolekcja <span>↗</span></button></div><section id="collection-panel" class="collection-panel" aria-label="Kolekcja kosmetyków" hidden><button id="collection-back" class="back-button" type="button">← Wróć do trybów</button><span class="eyebrow">KOLEKCJA</span><h2>Wygląd kulki</h2><div class="collection-stats"><strong><span id="collection-coins">0</span> ◈</strong><span><b id="collection-matches">0</b> meczów · <b id="collection-wins">0</b> wygranych</span></div><p id="collection-note" role="status">Ładowanie zapisu…</p><div id="cosmetic-list" class="cosmetic-list"></div><p class="collection-footnote">Monety pochodzą z zakończonych meczów. Kosmetyki nie wpływają na siłę kulek.</p></section><p id="network-status" role="status">Kliknij tryb, aby rozpocząć.</p><div id="mode-options" class="mode-options"><button class="mode-card" data-mode="1v1" type="button"><span class="mode-card-icon">◈</span><strong>1 na 1</strong><small>Wyzwanie dla dwóch graczy</small><span class="mode-card-arrow">↗</span></button><button class="mode-card" data-mode="2v2" type="button"><span class="mode-card-icon">✦</span><strong>2 na 2</strong><small>Dwie drużyny, cztery kulki</small><span class="mode-card-arrow">↗</span></button><button class="mode-card" data-mode="bot" type="button"><span class="mode-card-icon">◇</span><strong>Trening z botem</strong><small>Natychmiastowy pojedynek</small><span class="mode-card-arrow">↗</span></button><button class="mode-card" id="local-mode" type="button"><span class="mode-card-icon">◎</span><strong>Gra lokalna</strong><small>Wybierz obie kulki i testuj moce</small><span class="mode-card-arrow">↗</span></button></div><div id="join-controls" class="join-controls"><label for="room-code">Masz kod pokoju?</label><input id="room-code" maxlength="6" autocomplete="off" placeholder="WPISZ KOD"><button id="join-room" type="button">Dołącz do gry ↗</button></div><div id="room-actions" class="room-actions" hidden><div id="room-roster" class="room-roster"></div><button id="ready-room" class="primary" type="button" hidden>Jestem gotowy <span>↗</span></button><div id="round-controls" hidden><p id="score-line"></p><p id="match-summary" hidden></p><button id="rematch" class="primary" type="button" hidden>Rewanż <span>↗</span></button></div><label id="invite-label" for="room-link" hidden>Link zaproszenia</label><input id="room-link" readonly aria-label="Link zaproszenia" hidden><button id="leave-room" class="back-button" type="button" hidden>← Opuść pokój</button></div>`;
   document.querySelector('.home-content')!.prepend(panel);
   const el = <T extends HTMLElement>(id:string) => panel.querySelector<T>('#'+id)!;
   const viewport = document.querySelector<HTMLElement>('.viewport')!;
@@ -33,9 +36,40 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
   let collectionView=false;
   let choicePending=false;
   let pickerError='';
+  let lastRewardRefresh='';
   const angleOutput=pickEl<HTMLOutputElement>('selection-angle-value');
   let angleDegrees=0;
   const confirm=pickEl<HTMLButtonElement>('confirm-selection');
+  function renderCollection() {
+    const progress=getCachedProgress();
+    const list=el('cosmetic-list');
+    list.replaceChildren();
+    el('profile-summary').textContent=progress?`${progress.coins} monet · ${progress.matches} meczów`:'Zapis online niedostępny';
+    el('collection-note').textContent=isProfileOnline()?getProfileMessage():getProfileMessage();
+    el('collection-coins').textContent=String(progress?.coins??0);
+    el('collection-matches').textContent=String(progress?.matches??0);
+    el('collection-wins').textContent=String(progress?.wins??0);
+    if(!progress){const empty=document.createElement('p');empty.className='selection-wait';empty.textContent='Kolekcja wczyta się po połączeniu z zapisem online. Lokalna gra działa bez profilu.';list.append(empty);return;}
+    for(const cosmetic of COSMETICS){
+      const owned=progress.ownedCosmetics.includes(cosmetic.id);
+      const equipped=progress.equippedCosmetic===cosmetic.id;
+      const card=document.createElement('article');card.className='cosmetic-card';
+      card.innerHTML=`<span class="cosmetic-orbit" style="--cosmetic:${cosmetic.color}"></span><div><strong>${cosmetic.name}</strong><p>${cosmetic.description}</p></div>`;
+      const button=document.createElement('button');button.type='button';button.className='cosmetic-action';
+      button.textContent=equipped?'Używany':owned?'Użyj':`Odblokuj · ${cosmetic.cost} ◈`;
+      button.disabled=!isProfileOnline()||equipped||(!owned&&progress.coins<cosmetic.cost);
+      button.onclick=async()=>{
+        button.disabled=true;el('collection-note').textContent='Zapisuję…';
+        try{if(owned)await equipCosmetic(cosmetic.id);else await buyCosmetic(cosmetic.id);renderCollection();}
+        catch(error){el('collection-note').textContent=error instanceof Error?error.message:'Nie udało się zapisać kosmetyku.';button.disabled=false;}
+      };
+      card.append(button);list.append(card);
+    }
+  }
+  window.addEventListener('orbita-profile-updated',renderCollection);
+  el('open-collection').onclick=()=>{el('profile-strip').hidden=true;el('network-status').hidden=true;el('mode-options').hidden=true;el('join-controls').hidden=true;el('room-actions').hidden=true;el('collection-panel').hidden=false;renderCollection();};
+  el('collection-back').onclick=()=>{el('collection-panel').hidden=true;el('profile-strip').hidden=false;el('network-status').hidden=false;el('mode-options').hidden=false;el('join-controls').hidden=!onlineConfigured;};
+  void refreshProfile().catch(()=>renderCollection());
   function setAngleDegrees(degrees:number){
     const value=Math.max(-180,Math.min(180,Math.round(degrees)));
     angleDegrees=value;
@@ -90,7 +124,7 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     confirm.textContent=data.phase==='aim'?'Potwierdź kierunek ↗':'Potwierdź kulkę ↗';
     pickEl('selection-note').textContent=pickerError || (data.phase==='aim'?(data.angleLocked||choicePending?'Kierunek zapisany. Czekamy na pozostałych graczy.':'Kierunek można zmienić przed potwierdzeniem.'):(myChoice?`Wybrano ${chosen} z ${data.players.length}. Czekamy na pozostałych.`:'Najpierw wszyscy wybierają kulki; potem ustawią kierunek.'));
   }
-  function handleData(data: Snapshot & { type: string; token?: string; message?: string }, requestedType='') {
+  function handleData(data: Snapshot & { type: string; token?: string; message?: string; reward?: number }, requestedType='') {
       if (data.type === 'error') { status.textContent = data.message || 'Błąd serwera';pickerError=data.message || 'Błąd serwera';choicePending=false;renderPicker(); if(requestedType==='resume' && hosted){sessionStorage.removeItem('orbita-room-token');sessionStorage.removeItem('orbita-room-code');sessionToken=null;sessionCode=null;onLeave();} return; }
       if (data.token) {sessionToken=data.token;sessionStorage.setItem('orbita-room-token',data.token);}
       if (data.type === 'session') return;
@@ -99,6 +133,10 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
       currentState=data;
       sessionCode=data.code;sessionStorage.setItem('orbita-room-code',data.code);
       currentSlot = data.slot;
+      if(data.phase==='match_result' && data.matchId && lastRewardRefresh!==data.matchId){
+        lastRewardRefresh=data.matchId;void refreshProfile().catch(()=>{});
+        if(adsProvider.isAvailable())void adsProvider.showInterstitial().catch(()=>false);
+      }
       const nextRoundKey=`${data.code}:${data.round}`;
       if(data.phase==='select' && (roundKey!==nextRoundKey || previousPhase==='match_result')){
         roundKey=nextRoundKey;selectedId=null;collectionView=false;choicePending=false;pickerError='';cardsKey='';
@@ -110,6 +148,7 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
       const seats=data.mode==='2v2'?4:2;
       status.textContent = `Pokój ${data.code} · ${data.mode==='bot'?'trening z botem':data.mode} · ${data.phase==='select'?`wybrano ${chosen}/${seats}`:`gotowi ${data.players.filter((player:{ready:boolean})=>player.ready).length}/${seats}`}`;
       panel.hidden=false;
+      el('profile-strip').hidden=true;el('collection-panel').hidden=true;
       el('mode-options').hidden=true;el('join-controls').hidden=true;el('room-actions').hidden=false;
       el('room-roster').innerHTML=Array.from({length:seats},(_,i)=>{
         const player=data.players[i];
@@ -124,7 +163,7 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
       el('round-controls').hidden = data.phase === 'lobby';
       el('score-line').textContent = `Runda ${data.round}/9 · wynik ${data.score[0]} : ${data.score[1]}`;
       el('match-summary').hidden=data.phase!=='match_result';
-      if(data.phase==='match_result')el('match-summary').textContent=data.score[0]===data.score[1]?'Mecz zakończony remisem':`Mecz wygrywa ${data.mode==='2v2'?'drużyna':'gracz'} ${data.score[0]>data.score[1]?1:2}`;
+      if(data.phase==='match_result')el('match-summary').textContent=(data.score[0]===data.score[1]?'Mecz zakończony remisem':`Mecz wygrywa ${data.mode==='2v2'?'drużyna':'gracz'} ${data.score[0]>data.score[1]?1:2}`)+(data.reward?` · +${data.reward} ◈`:'');
       renderPicker();
       el('rematch').hidden = data.phase !== 'match_result' || !data.rematchAvailable;
       const link = el<HTMLInputElement>('room-link'); link.hidden = data.mode === 'bot';
@@ -143,7 +182,8 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     if(hosted){
       clearTimeout(pollTimer);
       httpQueue=httpQueue.catch(()=>{}).then(async()=>{
-        const body={...action,code:action.code ?? sessionCode,token:sessionToken};
+        const body:Record<string,unknown>={...action,code:action.code ?? sessionCode,token:sessionToken};
+        if(action.type==='create'||action.type==='join')body.profileToken=getProfileToken();
         try{
           const response=await fetch('/api/room',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),cache:'no-store'});
           const data=await response.json();
@@ -222,7 +262,7 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
   directionPad.addEventListener('pointerup',event=>{if(directionPointer===event.pointerId)directionPointer=null;});
   directionPad.addEventListener('pointercancel',()=>{directionPointer=null;});
   if(sessionToken && !hosted)send({type:'resume',token:sessionToken});
-  return { showMenu(){panel.hidden=false;el('mode-options').hidden=false;el('join-controls').hidden=!onlineConfigured;el('room-actions').hidden=true;}, leave(){leaving=true;send({type:'leave'});}, setAngle(angle: number) {
+  return { showMenu(){panel.hidden=false;el('profile-strip').hidden=false;el('collection-panel').hidden=true;el('network-status').hidden=false;el('mode-options').hidden=false;el('join-controls').hidden=!onlineConfigured;el('room-actions').hidden=true;}, leave(){leaving=true;send({type:'leave'});}, setAngle(angle: number) {
     if (!canAim) return;
     setAngleDegrees(angle*180/Math.PI);
   }, canAim: () => canAim };

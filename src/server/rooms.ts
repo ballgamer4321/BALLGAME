@@ -1,11 +1,12 @@
 import { MATCH_BALLS } from '../shared/config.js';
+import { randomUUID } from 'node:crypto';
 import { seededRandom } from '../shared/random.js';
 import { createWorld, stepWorld, type World } from '../simulation/world.js';
 
 type Phase = 'lobby' | 'select' | 'aim' | 'fight' | 'round_result' | 'match_result' | 'abandoned';
 export type RoomMode = '1v1' | '2v2' | 'bot';
 export interface Room {
-  code: string; mode: RoomMode; players: string[]; ready: Set<string>; disconnected: Map<string, number>; forfeited: Set<string>; phase: Phase;
+  code: string; matchId: string; mode: RoomMode; players: string[]; ready: Set<string>; disconnected: Map<string, number>; forfeited: Set<string>; phase: Phase;
   world: World | null; seed: number; clock: number; deadline: number; idle: number;
   round: number; score: [number, number]; offers: Record<string,string[]>;
   picks: Record<string,string>; angles: Record<string,number>;
@@ -25,7 +26,7 @@ export function serializeRoom(room: Room): StoredRoom {
 
 export function deserializeRoom(data: StoredRoom): Room {
   // Realtime Database omits empty arrays and objects when it stores a room.
-  return { ...data, ready: new Set(data.ready ?? []), disconnected: new Map(data.disconnected ?? []),
+  return { ...data, matchId: data.matchId ?? `legacy_${data.code}_${data.seed}`, ready: new Set(data.ready ?? []), disconnected: new Map(data.disconnected ?? []),
     forfeited: new Set(data.forfeited ?? []), collectionUsed: new Set(data.collectionUsed ?? []), rematch: new Set(data.rematch ?? []),
     offers: data.offers ?? {}, picks: data.picks ?? {}, angles: data.angles ?? {},
     world: data.world ? { ...data.world, events: data.world.events ?? [], projectiles: data.world.projectiles ?? [],
@@ -45,7 +46,7 @@ export class Rooms {
   }
   create(player: string, code: string, mode: RoomMode = '1v1'): Room {
     if (!/^[A-Z0-9]{6}$/.test(code) || this.rooms.has(code) || this.membership.has(player) || this.rooms.size >= 100 || !['1v1','2v2','bot'].includes(mode)) throw new Error('Nie można utworzyć pokoju');
-    const room: Room = {code,mode,players:[player],ready:new Set(),disconnected:new Map(),forfeited:new Set(),phase:'lobby',world:null,seed:0,clock:0,deadline:0,idle:0,round:0,score:[0,0],offers:{},picks:{},angles:{},collectionUsed:new Set(),rematch:new Set()};
+    const room: Room = {code,matchId:randomUUID(),mode,players:[player],ready:new Set(),disconnected:new Map(),forfeited:new Set(),phase:'lobby',world:null,seed:0,clock:0,deadline:0,idle:0,round:0,score:[0,0],offers:{},picks:{},angles:{},collectionUsed:new Set(),rematch:new Set()};
     if(mode==='bot'){const bot=`bot:${code}`;room.players.push(bot);room.ready.add(bot);this.membership.set(bot,code);}
     this.rooms.set(code,room); this.membership.set(player,code); return room;
   }
@@ -115,7 +116,7 @@ export class Rooms {
     if(room.phase!=='match_result' || room.forfeited.size) throw new Error('Mecz trwa lub brakuje gracza');
     room.rematch.add(player);
     if(room.mode==='bot')room.rematch.add(room.players[1]);
-    if(room.rematch.size===room.players.length){room.seed=seed>>>0;room.score=[0,0];room.round=0;room.collectionUsed.clear();room.rematch.clear();this.nextRound(room);}
+    if(room.rematch.size===room.players.length){room.seed=seed>>>0;room.matchId=randomUUID();room.score=[0,0];room.round=0;room.collectionUsed.clear();room.rematch.clear();this.nextRound(room);}
     return room;
   }
   tick():void {
@@ -168,7 +169,7 @@ export class Rooms {
   }
   snapshot(player:string){
     const room=this.forPlayer(player),world=room.world;
-    return {code:room.code,mode:room.mode,slot:room.players.indexOf(player),phase:room.phase,round:room.round,score:[...room.score],deadline:room.deadline?room.deadline-room.clock:0,
+    return {code:room.code,matchId:room.matchId,mode:room.mode,slot:room.players.indexOf(player),phase:room.phase,round:room.round,score:[...room.score],deadline:room.deadline?room.deadline-room.clock:0,
       offer:room.offers[player]??[],pick:room.picks[player]??null,angleLocked:room.angles[player]!==undefined,collectionUsed:room.collectionUsed.has(player),rematchReady:room.rematch.size,rematchAvailable:room.forfeited.size===0,
       players:room.players.map((id,slot)=>({ready:room.ready.has(id),chosen:!!room.picks[id],connected:!room.disconnected.has(id)&&!room.forfeited.has(id),bot:id.startsWith('bot:'),team:slot%2})),
       world:world?{tick:world.tick,seed:world.seed,phase:world.phase,balls:world.balls.map(b=>({...b})),winner:world.winner,reason:world.reason,hits:world.hits,events:world.events.map(e=>({...e})),projectiles:world.projectiles.map(p=>({...p})),contacts:[...world.contacts],collisionLimitHits:world.collisionLimitHits}:null};

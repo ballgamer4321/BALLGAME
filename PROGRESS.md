@@ -1,6 +1,6 @@
 # Postęp — Orbita: Starcie
 
-Aktualizacja: 2026-10-24. Obowiązuje jeden etap na wiadomość użytkownika. Etap 7 rozpoczęty po „dawaj kolejny etap”; implementacja gotowa, kontrola wizualna i FPS przeglądarki oczekują na dostęp do lokalnej karty.
+Aktualizacja: 2026-10-25. Obowiązuje jeden etap na wiadomość użytkownika. Etap 7 jest wdrożony, ale kontrola 360×800, landscape i FPS w przeglądarce nie została wykonana. Na wyraźne polecenie użytkownika rozpoczęto etap 8; po wdrożeniu zachować etap 7 jako niezamknięty aż do ręcznej lub dostępnej kontroli.
 
 | Etap | Status |
 | --- | --- |
@@ -11,7 +11,7 @@ Aktualizacja: 2026-10-24. Obowiązuje jeden etap na wiadomość użytkownika. Et
 | 5. Zdolności i balans | DONE |
 | 6. 2v2, boty i odporność sieci | DONE |
 | 7. Oprawa i telefony | IN PROGRESS — kod gotowy, QA przeglądarki zablokowane |
-| 8. Kolekcja i miejsca na reklamy | TODO |
+| 8. Kolekcja i miejsca na reklamy | DONE |
 | 9. Testy końcowe i wdrożenie | TODO |
 
 Etap 6: pokoje 1v1, 2v2 i jawny trening z botem. W 2v2 cztery sloty tworzą dwie drużyny; sojusznicy odbijają się bez obrażeń, HP i punkty liczą się drużynowo. Bot automatycznie wybiera kulkę i kierunek. Token sesji pozwala wrócić w ciągu 30 s; później 1v1 kończy się walkowerem, a w 2v2 nieobecna kulka zostaje wyeliminowana bez ukrytego bota. Pokoje puste, porzucone i bezczynne są sprzątane. Widok areny jest większy, a wybór kulek ma karty z mocą i parametrami.
@@ -37,4 +37,6 @@ Hostowane 1v1 (w toku): dodano API `api/room.ts`, zapis pokoi w Upstash Redis z 
 Migracja hostowanego 1v1 do Firebase na życzenie użytkownika (2026-10-24): projekt `orbita-starcie-ballgame`, Realtime Database w `europe-west1`, reguły bez dostępu klienta. Admin SDK zapisuje pokoje transakcyjnie przez `api/room.ts`; klucz konta usługi znajduje się poza repozytorium i jako tajna zmienna produkcyjna Vercel. Nieużywany dodatkowy klucz usunięto. Test lokalny przez prawdziwą bazę potwierdził stworzenie pokoju, dołączenie, gotowość, wybory i wspólną walkę dwóch sesji. 36/36 testów, tsc i build Vite przeszły. Kod jest na GitHub `main`; produkcyjny deploy `dpl_84jAcXyCour492Ek6hNq7phj8aUG` ma stan READY pod `https://ballgame-tawny.vercel.app/`. GET `/api/room` zwraca `online:true`; test zdalnego API i dwa osobne okna przeglądarki potwierdziły pełny start wspólnej walki. Odczyt RTDB bez uprawnień zwraca HTTP 401. Testowy pokój został opuszczony przez obu graczy.
 Zmiana tempa i celowania (2026-10-25): zwiększono promienie kul z 1,15–1,22 do 1,35–1,42 i szybkości o ok. 20%. Suwak kierunku usunięto z lokalnego oraz sieciowego wyboru: kierunek wybiera się ośmioma dużymi strzałkami lub przeciągnięciem po kompasie, z podglądem strzałki na arenie. Kontrola tsc i build Vite przeszły; testów scenariuszowych w tym podzadaniu nie uruchamiano. Wdrożenie tej poprawki jeszcze nie wykonane.
 
-Kolejna poprawka przygotowania meczu: wybór kulek i celowanie są teraz dwoma osobnymi krokami. W lokalnym trybie przycisk „Dalej: ustaw kierunek” przenosi do kompasu; osobny przycisk wraca do wyboru. W online serwer czeka na wybór wszystkich graczy, a potem pokazuje krok kierunku i osobne potwierdzenie. Tsc oraz build Vite przeszły; testów scenariuszowych nie uruchamiano. Zmiana oczekuje na publikację.
+Kolejna poprawka przygotowania meczu: wybór kulek i celowanie są teraz dwoma osobnymi krokami. W lokalnym trybie przycisk „Dalej: ustaw kierunek” przenosi do kompasu; osobny przycisk wraca do wyboru. W online serwer czeka na wybór wszystkich graczy, a potem pokazuje krok kierunku i osobne potwierdzenie. Tsc oraz build Vite przeszły; kod jest na GitHub `main` (`aa224a0`) i produkcji Vercel READY (`dpl_G9PRY7XFxaxGZELvpzYYjeVebFqc`). Publiczna strona zwraca 200, a `/api/room` `online:true`.
+
+Etap 8 — DONE. Firebase Realtime Database + Firebase Admin SDK zapisuje anonimowy profil (token 192-bit; w bazie wyłącznie SHA-256), a zablokowane reguły klienta wymuszają zapis przez serwer. Hostowane 1v1 przypisuje profil do miejsca gracza; wynik daje 20 monet za wygraną, 10 za remis i 8 za przegraną, z ochroną przed ponownym naliczeniem tego samego `matchId`. Kolekcja oferuje trzy obręcze, zakup/equip i wygląd widoczny na kulce. Monety nie dają przewagi. Adapter reklam pozostaje nieaktywny i nie przyznaje nagród. Weryfikacja: 42/42 testy, `tsc --noEmit`, build Vite i `git diff --check` przeszły; build zgłasza wcześniejsze ostrzeżenie o paczce JS 550 kB. Dodatkowy smoke test na prawdziwej RTDB sprawdził utworzenie profilu, dwie transakcyjne nagrody, brak duplikatu, ponowny odczyt przez API i usunięcie rekordu testowego. Etap 9 obejmuje publikację i końcową kontrolę wdrożenia. Etap 7 nadal czeka na wizualne QA 360×800, landscape i FPS; nie obchodzono blokady narzędzia przeglądarki.

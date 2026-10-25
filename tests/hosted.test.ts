@@ -57,3 +57,15 @@ it('rejects unknown sessions and full rooms', async () => {
   await handleHostedAction(store, { type: 'join', code: host.code }, 1000);
   await expect(handleHostedAction(store, { type: 'join', code: host.code }, 1000)).rejects.toThrow('Nie można dołączyć');
 });
+
+it('stores only server-derived profile ids on hosted player seats', async () => {
+  const { store, rooms } = memoryStore();
+  const hostId = 'a'.repeat(64), guestId = 'b'.repeat(64);
+  const host = state(await handleHostedAction(store, { type: 'create', mode: '1v1', profileId: hostId }, 1000));
+  const guest = state(await handleHostedAction(store, { type: 'join', code: host.code, profileId: guestId }, 1100));
+  expect(rooms.get(host.code)?.profiles).toEqual({
+    [rooms.get(host.code)!.room.players[0]]: hostId,
+    [rooms.get(host.code)!.room.players[1]]: guestId,
+  });
+  expect(guest.slot).toBe(1);
+});

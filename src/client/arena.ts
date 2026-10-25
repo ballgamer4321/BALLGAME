@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { BASIC_BALLS, RULES } from '../shared/config';
+import { COSMETICS } from '../shared/progression';
 import type { World } from '../simulation/world';
 
 export class Arena {
@@ -8,6 +9,7 @@ export class Arena {
   private camera = new THREE.OrthographicCamera(-14, 14, 11, -11, 0.1, 100);
   private balls: THREE.Group[] = [];
   private trails: THREE.Mesh[][] = [];
+  private cosmeticRings: THREE.Mesh[] = [];
   private previous: { x: number; y: number }[] = [];
   private flashes: { mesh: THREE.Mesh; life: number }[] = [];
   private damageBubbles: { sprite: THREE.Sprite; life: number; rise: number }[] = [];
@@ -85,6 +87,11 @@ export class Arena {
       const satellite = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8),
         new THREE.MeshBasicMaterial({ color: 0xff9dd5 }));
       satellite.visible = false; group.add(satellite);
+      const cosmeticRing = new THREE.Mesh(new THREE.TorusGeometry(def.radius * 1.55, 0.055, 8, 64),
+        new THREE.MeshBasicMaterial({ color: COSMETICS[0].color, transparent: true, opacity: 0.88, depthWrite: false }));
+      cosmeticRing.rotation.x = Math.PI / 2;
+      cosmeticRing.position.y = -def.radius + 0.08;
+      group.add(cosmeticRing); this.cosmeticRings.push(cosmeticRing);
       this.balls.push(group); this.scene.add(group);
       const trail: THREE.Mesh[] = [];
       for (let i = 0; i < 12; i++) {
@@ -166,6 +173,14 @@ export class Arena {
     (orb.material as THREE.MeshPhysicalMaterial).color.set(color);
     for (const child of group.children.slice(1, 3)) (child as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>).material.emissive.set(color);
     for (const particle of this.trails[index]) (particle.material as THREE.MeshBasicMaterial).color.set(color);
+  }
+
+  setBallCosmetic(index: number, cosmeticId: string) {
+    const ring = this.cosmeticRings[index];
+    if (!ring) return;
+    const cosmetic = COSMETICS.find(item => item.id === cosmeticId) ?? COSMETICS[0];
+    (ring.material as THREE.MeshBasicMaterial).color.set(cosmetic.color);
+    ring.visible = true;
   }
 
   beforeStep(w: World) { this.previous = w.balls.map(b => ({ x: b.x, y: b.y })); }
