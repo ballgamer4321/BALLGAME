@@ -1,40 +1,34 @@
 # Wznowienie — Orbita: Starcie
 
-Etapy 1–6 DONE, po nich dodatkowe poprawki wyboru kulek i ekranu startowego. Etap 7 IN PROGRESS: kod gotowy, ale kontrola wizualna i FPS przeglądarki zablokowane. Na osobne polecenie użytkownika rozpoczęto etap 8; etap 7 zachowuje status do czasu ręcznej lub dostępnej kontroli. Projekt jest w C:\Users\antre\Desktop\ball game. Repo Git jest powiązane z `https://github.com/ballgamer4321/BALLGAME` na bazie istniejącego `origin/main`.
+Projekt: `C:\Users\antre\Desktop\ball game`; GitHub `https://github.com/ballgamer4321/BALLGAME`; produkcja `https://ballgame-tawny.vercel.app/`.
 
-Działa lokalny pojedynek, multiplayer 1v1/2v2, trening z jawnie oznaczonym botem, czternaście kulek ze zdolnościami, wybór z trzech ofert i raz z kolekcji na mecz, celowanie, rundy/rewanż, token powrotu w 30 s oraz sprzątanie pokoi. Mapa jest kwadratowa 20×20; arena, kulki i ekran wyboru zostały powiększone. Po utracie HP pojawia się dymek obrażeń; widoczny zegar usunięto. Nowe efekty to ładowany promień, laserowa bariera, salwy pocisków, sieć-pułapka i modele z indywidualnymi dodatkami. Ostatni lifting UI stosuje grafitowe powierzchnie, oszczędny limonkowy akcent i numerowane kafle trybów.
+## Stan
 
-Uruchomienie w osobnych terminalach z katalogu projektu:
-- node node_modules/tsx/dist/cli.mjs src/server/index.ts
-- node node_modules/vite/bin/vite.js --host 127.0.0.1
-Adres: http://127.0.0.1:5173/. Oba procesy działają w bieżącej sesji, ale mogą wygasnąć po jej zakończeniu.
-Testy: node node_modules/vitest/vitest.mjs run
-Typy: node node_modules/typescript/bin/tsc --noEmit
-Build: node node_modules/vite/bin/vite.js build
-Polecenie npm może być niedostępne w PATH; używaj powyższych komend node.
+Etapy 1–6 i 8–9 są DONE. Etap 7 (oprawa i telefony) pozostaje IN_PROGRESS, bo nie wykonano jeszcze ręcznego QA 360×800/landscape i pomiaru FPS. Ostatnia poprawka: ekran końca meczu pokazuje HP oraz skład obu stron, HUD ogranicza koszt częstych aktualizacji, a metadane i favicon zostały odświeżone. Three.js jest osobnym chunkiem. Kod przechodzi testy i build; publikacja tej poprawki trwa. Nie obchodź blokady narzędzia przeglądarki innym sterowaniem.
 
-Kluczowe pliki: PROJECT_SPEC.md (zasady i kryteria), src/simulation/world.ts (drużyny, fizyka, moce), src/server/rooms.ts (tryby, rundy, timeouty, walkower), src/server/network.ts (WebSocket i token sesji), src/client/main.ts i src/client/network.ts (HUD, wybór, UI sieciowe), src/client/arena.ts i src/client/style.css (render i układ). Testy scenariuszy są w tests/.
+## Uruchomienie i weryfikacja
 
-Ostatnia ukończona czynność: implementacja etapu 7. `src/client/audio.ts` generuje krótkie dźwięki Web Audio po interakcji; wyciszenie zapamiętuje ustawienie. `src/client/arena.ts` ma lekkie efekty: niższy DPR, wyłączone cienie i ograniczone ślady/efekty; respektuje reduced motion. W `src/client/main.ts` są przyciski dźwięku, efektów i „Zmień tryb”. CSS dostosowano do 360×800 i landscape; mobilny wybór lokalny przełącza kartę „Twoja kulka”/„Rywal”, a suwak kierunku jest większy i działa dotykiem. `scripts/bench.ts` mierzy czystą symulację: 48 walk 2v2, 98 545 ticków w 428,6 ms (0,0043 ms/tick) na dostępnej maszynie. 32/32 testy, typy i build przeszły. Serwery słuchają na 5173 i 3001.
+Node.js: `C:\Users\antre\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe` (npm nie jest w PATH).
 
-Niedokończone w etapie 7: wizualna kontrola 360×800 i poziomego ekranu oraz pomiar FPS WebGL. Próba dostępu do lokalnej karty IAB została odrzucona przez politykę przeglądarki; nie obchodzić tej blokady inną przeglądarką ani CDP. Nie deklarować kontroli telefonu na podstawie samego builda. Ograniczenia: ostrzeżenie bundlera o ok. 539 kB JS; brak testu pełnego meczu 2v2 do rewanżu i produkcyjnej wersji na fizycznym telefonie; trwały zapis posiadanych kulek i hosting czekają na etapy 8–9.
+- Testy: `node node_modules/vitest/vitest.mjs run`
+- Typy: `node node_modules/typescript/bin/tsc --noEmit`
+- Build: `node node_modules/vite/bin/vite.js build`
+- Klient: `node node_modules/vite/bin/vite.js --host 127.0.0.1`
+- Serwer: `node node_modules/tsx/dist/cli.mjs src/server/index.ts`
+- Lokalny adres: `http://127.0.0.1:5173/`
 
-Ostatnia prośba użytkownika: zwiększyć tempo kulek, ograniczyć utratę prędkości przy zderzeniu, wysłać kod na GitHub i wdrożyć na Vercel. Fizyka i parametry są poprawione, dodano test ukośnego zderzenia; 33/33 testy, typy i build Vite przeszły. `vercel.json` i opcjonalne `VITE_WS_URL` przygotowują frontend. Repozytorium `ballgamer4321/BALLGAME` jest publiczne. W Vercel CLI zalogowano się do `ballsteam/ball_game`; ręczny deploy produkcyjny `dpl_Bjyjfg7U8CkAum1wXFDP85EWFFmy` jest READY pod `https://ballgame-tawny.vercel.app/`. `vercel curl` zwróciło 200 dla HTML i JS, ale `/ws` ma 404. Na życzenie użytkownika wyłączono ochronę logowaniem dla produkcji, pozostawiając ją dla podglądów. Publiczny adres otwarto w przeglądarce i uruchomiono lokalną walkę. Serwer WebSocket nadal jest pojedynczym procesem Node.js ze stanem w RAM: samo Vercel Vite nie zapewni multiplayera. Bez `VITE_WS_URL` produkcyjny build wyłącza przyciski sieciowe i pozwala zagrać lokalnie.
+W PowerShell, jeśli `node` nie jest dostępne, poprzedź każdą komendę pełną ścieżką do `node.exe` powyżej.
 
-Kod opublikowano na `main`; automatyczny deploy GitHub→Vercel z commitu `6e7a9f5` (`dpl_GYvCmRr2eubYbkGX2UsFni5Suf6k`) jest READY. Publiczny adres `https://ballgame-tawny.vercel.app/` zwraca HTTP 200. Multiplayer wymaga osobnego trwałego hostingu serwera WebSocket albo architektury z zewnętrznym stanem; po uzyskaniu takiego backendu ustawić `VITE_WS_URL` i ponownie wdrożyć. Później po odzyskaniu dostępu do lokalnej strony sprawdzić 360×800 i landscape, wybór kulek, dotykowe celowanie, wyciszenie, jakość efektów i powrót do menu; zebrać błędy konsoli oraz FPS. Dopiero po odrębnym poleceniu użytkownika rozpocząć etap 8.
+## Pliki i dalsze kroki
 
-Nowe polecenie użytkownika: uruchomić 1v1 między przeglądarkami na publicznym adresie. Kod hostowanego pokoju jest w `src/server/hosted.ts` i `api/room.ts`; klient produkcyjny używa HTTP, odtwarza walkę lokalnie w 60 Hz, a Vercel współdzieli stan przez Upstash Redis. Przy braku konfiguracji endpoint GET zwraca `online:false`, a przycisk 1v1 jest wyłączony. Dodano test dwóch sesji; 35/35 testów, tsc i build przeszły. Użytkownik zalogował Vercel CLI ponownie i sam zaakceptował warunki Upstash w przeglądarce. Darmowy zasób `orbita-rooms` bez automatycznej zmiany planu podłączono do `ballsteam/ball_game`; env to `KV_REST_API_URL` i `KV_REST_API_TOKEN` (nie `UPSTASH_REDIS_REST_*`). Test lokalny przez prawdziwe API Redis potwierdził utworzenie pokoju, dołączenie drugiego gracza, wybory i wspólną walkę. Nadal trzeba wypchnąć kod, sprawdzić automatyczny deploy i dwie zdalne przeglądarki. Po uruchomieniu 1v1 wrócić do QA telefonu i dopiero na osobne polecenie do etapu 8.
+- `src/client/main.ts` — flow, HUD, wyniki i połączenie.
+- `src/client/arena.ts` — scena Three.js; `src/client/style.css` — UI i responsywność.
+- `src/simulation/world.ts`, `src/server/rooms.ts`, `tests/` — symulacja, multiplayer i scenariusze.
+- `PROGRESS.md` — aktualny status.
 
-Aktualizacja Firebase (2026-10-24): użytkownik wybrał Firebase i zatwierdził klucz Admin SDK. Projekt `orbita-starcie-ballgame`, RTDB `https://orbita-starcie-ballgame-default-rtdb.europe-west1.firebasedatabase.app` z zablokowanymi regułami klienta. `api/room.ts` używa `firebase-admin` i transakcji; Vercel `ballsteam/ball_game` ma produkcyjne env `FIREBASE_DATABASE_URL` oraz tajne `FIREBASE_SERVICE_ACCOUNT_JSON`. Plik klucza jest wyłącznie w ignorowanym `.secrets/firebase-service-account.json`; nie wypisywać ani nie commitować. Dodatkowy nieużywany klucz usunięto. Test lokalny prawdziwej bazy: dwie sesje, wspólna walka; 36/36 testów, tsc, Vite build OK. GitHub `main` ma kod Firebase, automatyczny deploy `dpl_84jAcXyCour492Ek6hNq7phj8aUG` jest READY, GET `/api/room` zwraca `online:true`, zdalny smoke i dwa okna przeglądarki potwierdziły wspólną walkę. Odczyt RTDB bez uprawnień ma HTTP 401. Lokalne `git push` używa konta bez prawa zapisu; GitHub connector ma dostęp do repo. Następny etap gry nadal wymaga osobnego polecenia użytkownika.
-Ostatni wdrożony commit `aa224a0` dzieli przygotowanie meczu na wybór kulek i osobny krok kierunku. Weryfikacja: tsc/build OK, publiczna strona 200, nowy JS ma oba kroki, `/api/room` `online:true`. Stage 7 nadal ma brakującą kontrolę 360×800/landscape/FPS; nie obchodzić polityki blokującej lokalną kartę.
+1. Opublikować bieżący kod na GitHub `main` (użytkownik wcześniej jawnie zlecił publikację) i upewnić się, że tree odpowiada lokalnej wersji.
+2. Sprawdzić automatyczny deploy Vercel: READY, alias produkcyjny i HTTP 200; zweryfikować `/api/room` jako `online:true`.
+3. Zaktualizować `PROGRESS.md` wynikiem publikacji.
+4. Wrócić do brakującego ręcznego QA etapu 7, jeśli polityka narzędzia pozwoli.
 
-Etap 8 DONE: Firebase Realtime Database + Admin SDK zapisuje anonimowe profile, serwer przypisuje je do slotów hostowanego 1v1 i przyznaje idempotentne nagrody. Kolekcja przechowuje trzy odcienie kulki; adapter reklam pozostaje nieaktywny i nie tworzy waluty. Weryfikacja: 42/42 testy, `tsc --noEmit`, build Vite, `git diff --check` i smoke test API profilu na prawdziwej RTDB; testowy rekord usunięto.
-
-Etap 9 wdrożono: GitHub `main` i Vercel production zawierają profile Firebase oraz poprawkę, dzięki której obaj gracze widzą kwotę nagrody. Produkcja `https://ballgame-tawny.vercel.app/` jest READY; strona i `/api/room`, `/api/profile` zwracają 200, API zgłaszają `online:true`, brak błędów runtime w sprawdzonym oknie. 42/42 testy i build przeszły. Dwa niezależne klienty HTTP rozegrały na produkcji pełny mecz 1v1; wynik 0–3, podsumowania obu stron pokazały 8/20, zapisy profili się zgodziły, a pokój i profile testowe usunięto. Automatyczne testy sprawdzają czterech klientów 2v2, rewanż po trzech zwycięstwach i zdolności kulek.
-
-Pozostała kontrola ręczna: dwa/cztery okna przeglądarki, 360×800, landscape, FPS WebGL i fizyczny telefon. Dostęp do wcześniejszej lokalnej karty przeglądarka odrzuciła; nie omijać tej blokady. Etap 7 pozostaje IN PROGRESS do tej kontroli. Build nadal ostrzega o bundlu JS 550 kB.
-
-Po opinii użytkownika usunięto ozdobne obręcze i widmową powłokę wokół kulek; zapisane kosmetyki zmieniają delikatnie kolor powierzchni kulki. `tsc --noEmit` i build Vite przeszły. Kolejna weryfikacja produkcji po tej poprawce jest częścią bieżącego zadania.
-
-
-Ostatnia poprawka: celowanie na etapie 2 jest przeciąganiem bezpośrednio na arenie od własnej kulki; widoczna strzałka pokazuje tor, a „Zablokuj kierunek” zatwierdza wybór. Zmieniono lokalną oraz hostowaną 1v1 ścieżkę, panel celowania nie zasłania planszy, obsługiwane są touch i korekta strzałkami klawiatury. Weryfikacja automatyczna: 42/42 testy, tsc, Vite build, diff check OK. Brak ręcznego QA wizualnego: nie omijać wcześniejszej blokady narzędzia przeglądarki.
+Ostatnie testy przed publikacją: 48/48; TypeScript; Vite build; diff check — OK. Obraz przeglądarki i FPS nie zostały ręcznie sprawdzone.

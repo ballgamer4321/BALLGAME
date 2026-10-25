@@ -1,2 +1,13 @@
 import { defineConfig } from 'vite';
-export default defineConfig({ server: { proxy: { '/ws': { target: 'ws://127.0.0.1:3001', ws: true } } } });
+export default defineConfig({
+  server: { proxy: { '/ws': { target: 'ws://127.0.0.1:3001', ws: true } } },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          three: ['three'],
+        },
+      },
+    },
+  },
+});

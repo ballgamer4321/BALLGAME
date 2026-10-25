@@ -33,6 +33,11 @@ app.innerHTML = `
   </main>`;
 
 const get = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+const resultMetrics = document.createElement('div');
+resultMetrics.className = 'result-metrics';
+resultMetrics.setAttribute('role', 'group');
+resultMetrics.setAttribute('aria-label', 'Pozostałe zdrowie po pojedynku');
+get('result-detail').after(resultMetrics);
 let seed = 1;
 let localPicks: [string, string] = ['amber', 'jade'];
 let world = createWorld(seed, localPicks);
@@ -77,6 +82,8 @@ effectsButton.addEventListener('click', () => {
   updateOptions();
 });
 
+const fighterNames = Array.from(document.querySelectorAll<HTMLElement>('.fighter-heading > span:first-child'));
+const fighterTypes = Array.from(document.querySelectorAll<HTMLElement>('.fighter-type'));
 function updateHud() {
   world.balls.forEach((b, i) => {
     const def = MATCH_BALLS.find(candidate => candidate.id === b.abilityId);
@@ -88,8 +95,8 @@ function updateHud() {
     const hp=Math.ceil(members.reduce((sum,b)=>sum+b.hp,0));
     const maxHp=members.reduce((sum,b)=>sum+b.maxHp,0);
     const names=members.map(b=>MATCH_BALLS.find(def=>def.id===b.abilityId)?.name??b.id);
-    document.querySelectorAll<HTMLElement>('.fighter-heading > span:first-child')[team].textContent=names.join(' + ');
-    document.querySelectorAll<HTMLElement>('.fighter-type')[team].textContent=members.length>1?`DRUŻYNA ${team+1} · ${members.length} KULKI`:(MATCH_BALLS.find(def=>def.id===members[0]?.abilityId)?.ability??'KULKA PODSTAWOWA');
+    fighterNames[team].textContent=names.join(' + ');
+    fighterTypes[team].textContent=members.length>1?`DRUŻYNA ${team+1} · ${members.length} KULKI`:(MATCH_BALLS.find(def=>def.id===members[0]?.abilityId)?.ability??'KULKA PODSTAWOWA');
     get(`hp-${team}`).innerHTML=`${hp} <small>/ ${maxHp}</small>`;
     get(`bar-${team}`).style.width=`${maxHp?hp/maxHp*100:0}%`;
     get(`health-${team}`).setAttribute('aria-valuenow',String(hp));
@@ -272,6 +279,40 @@ function finish() {
   const winner = MATCH_BALLS.find(b => b.id === world.winner?.split(':').at(-1));
   get('result-title').textContent = world.balls.length>2 && winningBall ? `Drużyna ${winningBall.team+1} wygrywa` : winner ? `${winner.name} wygrywa` : 'Równe siły. Remis.';
   get('result-detail').textContent = `${world.reason === 'timeout' ? 'Arena przerwała zablokowaną walkę' : 'Koniec zdrowia'} · ${world.hits} zderzeń`;
+  resultMetrics.replaceChildren();
+  for (let team = 0; team < 2; team++) {
+    const members = world.balls.filter(ball => ball.team === team);
+    const hp = members.reduce((sum, ball) => sum + Math.max(0, ball.hp), 0);
+    const maxHp = members.reduce((sum, ball) => sum + ball.maxHp, 0);
+    const percentage = maxHp ? Math.round(hp / maxHp * 100) : 0;
+    const card = document.createElement('div');
+    card.className = `result-team result-team-${team}${winningBall?.team === team ? ' is-winning' : ''}`;
+    const heading = document.createElement('div');
+    heading.className = 'result-team-heading';
+    const label = document.createElement('span');
+    label.className = 'result-team-label';
+    label.textContent = `${world.balls.length > 2 ? 'DRUŻYNA' : 'GRACZ'} ${team + 1}`;
+    const value = document.createElement('b');
+    value.className = 'result-team-value';
+    value.textContent = `${percentage}%`;
+    heading.append(label, value);
+
+    const track = document.createElement('div');
+    track.className = 'result-team-track';
+    track.setAttribute('role', 'progressbar');
+    track.setAttribute('aria-label', `Pozostałe zdrowie ${label.textContent.toLowerCase()}`);
+    track.setAttribute('aria-valuemin', '0');
+    track.setAttribute('aria-valuemax', '100');
+    track.setAttribute('aria-valuenow', String(percentage));
+    const fill = document.createElement('span');
+    fill.style.width = `${percentage}%`;
+    track.append(fill);
+
+    const roster = document.createElement('small');
+    roster.textContent = members.map(ball => MATCH_BALLS.find(def => def.id === ball.abilityId)?.name ?? ball.id).join(' · ');
+    card.append(heading, track, roster);
+    resultMetrics.append(card);
+  }
   get('phase-label').textContent = 'KONIEC POJEDYNKU'; get('status').textContent = 'Wynik';
   get('hint').textContent = online ? 'Wynik rundy jest ustalany przez serwer. Kolejna runda zacznie się automatycznie.' : 'Przygotuj kolejny pojedynek, aby ponownie wybrać kulki i kierunek.';
   get<HTMLButtonElement>('pause').disabled = true;
@@ -293,7 +334,7 @@ function frame(now: number) {
         else finish();
       }
     }
-    updateHud();
+    if(world.tick%6===0||world.phase==='finished')updateHud();
     if (running && world.tick > RULES.overtimeTick) {
       get('status').textContent = 'Dogrywka';
       get('hint').textContent = 'Arena kończy przeciągającą się walkę, stopniowo odbierając zdrowie obu kulkom.';
