@@ -114,3 +114,8 @@ Adapter reklam: `isAvailable`, `showInterstitial`, `showRewarded`. Domyślny dos
 | 9 | Produkcyjny build, pełne 1v1/2v2 i rewanż, zgodność HP, wszystkie moce, sieć i zapis; instrukcja uruchomienia/hostingu, konfiguracja i uczciwy raport niewykonanych testów. |
 
 Nie deklarować sukcesu testów przeglądarkowych na podstawie samych testów WebSocket. W 1v1 użyć dwóch osobnych kontekstów przeglądarki, w 2v2 czterech. Porównać stan tego samego ticka, nie tylko końcowy napis. Zebrać błędy konsoli i sprawdzić wersję produkcyjną. Brak urządzenia fizycznego oznacza test emulacji, a nie potwierdzenie realnego telefonu. Testy stresowe i publiczne wdrożenie opisać oddzielnie.
+
+
+### Celowanie na ekranie (2026-10-25)
+
+Kierunek jest osobnym krokiem po wyborze kulki. Sterowanie przypomina opisywany w poradnikach do Ball VS Ball schemat: przeciągnij na arenie od swojej kulki, obserwuj strzałkę toru i zatwierdź przyciskiem „Zablokuj kierunek”. Oryginalna gra opisuje przeciąganie myszą i jawne „Lock Aim”; układ Orbity pozostaje własny i nie używa zasobów Roblox ([Bloxodes](https://bloxodes.com/wiki/ball-vs-ball), [How to Play Ball VS Ball](https://ballvsballcodes.org/how-to-play/)). Ta sama obsługa działa wskaźnikiem dotykowym, a strzałki klawiatury korygują kierunek co 15°. Lokalna i sieciowa ścieżka korzystają z tej samej projekcji wskaźnika na płaszczyznę areny.

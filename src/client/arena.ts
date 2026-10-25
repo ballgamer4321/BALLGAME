@@ -69,7 +69,7 @@ export class Arena {
       new THREE.MeshBasicMaterial({ color: 0x73917a, transparent: true, opacity: 0.45, side: THREE.DoubleSide }));
     ring.rotation.x = -Math.PI / 2; ring.position.y = 0.023; this.scene.add(ring);
     for (let z = -9.5; z < 10; z += 0.8) box(0.035, 0.01, 0.36, 0, 0.025, z, 0x4b6655);
-    this.aimArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 2.5, 0xd7f786, 0.55, 0.32);
+    this.aimArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 4.2, 0xd7f786, 0.7, 0.42);
     this.aimArrow.visible = false;
     this.scene.add(this.aimArrow);
 

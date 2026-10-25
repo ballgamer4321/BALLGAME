@@ -35,3 +35,6 @@ Etap 9 wdrożono: GitHub `main` i Vercel production zawierają profile Firebase 
 Pozostała kontrola ręczna: dwa/cztery okna przeglądarki, 360×800, landscape, FPS WebGL i fizyczny telefon. Dostęp do wcześniejszej lokalnej karty przeglądarka odrzuciła; nie omijać tej blokady. Etap 7 pozostaje IN PROGRESS do tej kontroli. Build nadal ostrzega o bundlu JS 550 kB.
 
 Po opinii użytkownika usunięto ozdobne obręcze i widmową powłokę wokół kulek; zapisane kosmetyki zmieniają delikatnie kolor powierzchni kulki. `tsc --noEmit` i build Vite przeszły. Kolejna weryfikacja produkcji po tej poprawce jest częścią bieżącego zadania.
+
+
+Ostatnia poprawka: celowanie na etapie 2 jest przeciąganiem bezpośrednio na arenie od własnej kulki; widoczna strzałka pokazuje tor, a „Zablokuj kierunek” zatwierdza wybór. Zmieniono lokalną oraz hostowaną 1v1 ścieżkę, panel celowania nie zasłania planszy, obsługiwane są touch i korekta strzałkami klawiatury. Weryfikacja automatyczna: 42/42 testy, tsc, Vite build, diff check OK. Brak ręcznego QA wizualnego: nie omijać wcześniejszej blokady narzędzia przeglądarki.

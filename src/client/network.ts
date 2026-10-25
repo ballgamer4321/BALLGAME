@@ -12,7 +12,7 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
   const viewport = document.querySelector<HTMLElement>('.viewport')!;
   const overlay = document.createElement('section');
   overlay.id='selection-overlay';overlay.className='selection-overlay';overlay.hidden=true;overlay.setAttribute('aria-label','Wybór kulki przed rundą');
-  overlay.innerHTML=`<div class="selection-shell"><div class="selection-heading"><span id="selection-step-label" class="eyebrow">KROK 1 / 2</span><h2 id="selection-step-title">Wybierz kulkę</h2><p id="selection-step-hint">Trzy losowe propozycje albo cała kolekcja raz na mecz.</p></div><div id="selection-players" class="selection-players"></div><div id="selection-tabs" class="selection-tabs"><button id="offer-tab" type="button">3 losowe kulki</button><button id="collection-tab" type="button">Moje kulki · raz na mecz</button></div><div id="selection-cards" class="selection-cards" role="group" aria-label="Kulki do wyboru"></div><div id="selection-aim" class="selection-aim"><div class="direction-picker"><div class="direction-grid" id="selection-direction" role="group" aria-label="Ustaw kierunek startowy"><button type="button" data-angle="-135" aria-label="Góra lewo">↖</button><button type="button" data-angle="-90" aria-label="Góra">↑</button><button type="button" data-angle="-45" aria-label="Góra prawo">↗</button><button type="button" data-angle="180" aria-label="Lewo">←</button><i aria-hidden="true"></i><button type="button" data-angle="0" aria-label="Prawo" aria-pressed="true">→</button><button type="button" data-angle="135" aria-label="Dół lewo">↙</button><button type="button" data-angle="90" aria-label="Dół">↓</button><button type="button" data-angle="45" aria-label="Dół prawo">↘</button></div><div class="direction-copy"><strong>Kierunek: <output id="selection-angle-value">0°</output></strong><span>Przeciągnij po kompasie. Strzałkę zobaczysz na arenie.</span></div></div></div><div class="selection-bottom"><button id="confirm-selection" class="primary" type="button" disabled>Potwierdź kulkę i kierunek ↗</button><p id="selection-note" role="status">Walka zacznie się, gdy wszyscy gracze wybiorą kulki.</p></div></div>`;
+  overlay.innerHTML=`<div class="selection-shell"><div class="selection-heading"><span id="selection-step-label" class="eyebrow">KROK 1 / 2</span><h2 id="selection-step-title">Wybierz kulkę</h2><p id="selection-step-hint">Trzy losowe propozycje albo cała kolekcja raz na mecz.</p></div><div id="selection-players" class="selection-players"></div><div id="selection-tabs" class="selection-tabs"><button id="offer-tab" type="button">3 losowe kulki</button><button id="collection-tab" type="button">Moje kulki · raz na mecz</button></div><div id="selection-cards" class="selection-cards" role="group" aria-label="Kulki do wyboru"></div><div id="selection-aim" class="selection-aim"><div class="direction-copy"><strong>Przeciągnij po arenie <output id="selection-angle-value">0°</output></strong><span>Ustaw tor, ciągnąc od swojej kulki. Zatwierdź kierunek, gdy strzałka będzie dobrze ustawiona.</span></div></div><div class="selection-bottom"><button id="confirm-selection" class="primary" type="button" disabled>Potwierdź kulkę i kierunek ↗</button><p id="selection-note" role="status">Walka zacznie się, gdy wszyscy gracze wybiorą kulki.</p></div></div>`;
   viewport.append(overlay);
   const pickEl=<T extends HTMLElement>(id:string)=>overlay.querySelector<T>('#'+id)!;
   const code = el<HTMLInputElement>('room-code');
@@ -74,14 +74,13 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     const value=Math.max(-180,Math.min(180,Math.round(degrees)));
     angleDegrees=value;
     angleOutput.textContent=`${value}°`;
-    pickEl('selection-direction').querySelectorAll<HTMLButtonElement>('[data-angle]').forEach(button=>
-      button.setAttribute('aria-pressed',String(Number(button.dataset.angle)===value)));
     onAimChange(value*Math.PI/180,currentSlot);
   }
   function renderPicker(){
     const data=currentState;
     const preparing=!!data && (data.phase==='select' || data.phase==='aim');
     overlay.hidden=!preparing;
+    overlay.classList.toggle('is-aiming',!!data && data.phase==='aim');
     viewport.classList.toggle('selection-active',preparing);
     if(!data || !preparing)return;
     const chosen=data.players.filter(player=>player.chosen).length;
@@ -90,7 +89,7 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     const aiming=data.phase==='aim'&&!data.angleLocked&&!choicePending;
     pickEl('selection-step-label').textContent=data.phase==='aim'?'KROK 2 / 2':'KROK 1 / 2';
     pickEl('selection-step-title').textContent=data.phase==='aim'?'Ustaw kierunek':'Wybierz kulkę';
-    pickEl('selection-step-hint').textContent=data.phase==='aim'?'Przeciągnij po kompasie i zatwierdź kierunek startu.':'Wybierz jedną z trzech propozycji albo skorzystaj z kolekcji.';
+    pickEl('selection-step-hint').textContent=data.phase==='aim'?'Przeciągnij po arenie od swojej kulki, a potem zablokuj kierunek.':'Wybierz jedną z trzech propozycji albo skorzystaj z kolekcji.';
     pickEl('selection-players').innerHTML=data.players.map((player,i)=>`<div class="selection-player ${player.chosen?'is-chosen':''}"><span>${i===data.slot?'TY':player.bot?'BOT':`GRACZ ${i+1}`} <small>DRUŻYNA ${player.team+1}</small></span><b>${player.chosen?'WYBRANO':'WYBIERA…'}</b></div>`).join('');
     pickEl('selection-tabs').hidden=!choosing;
     pickEl<HTMLButtonElement>('offer-tab').setAttribute('aria-pressed',String(!collectionView));
@@ -118,10 +117,10 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
       }
     }
     cards.hidden=data.phase==='aim';
-    pickEl('selection-aim').hidden=!choosing&&!aiming;
+    pickEl('selection-aim').hidden=data.phase!=='aim'||!aiming;
     confirm.hidden=!choosing&&!aiming;
     confirm.disabled=choicePending || (choosing&&!selectedId);
-    confirm.textContent=data.phase==='aim'?'Potwierdź kierunek ↗':'Potwierdź kulkę ↗';
+    confirm.textContent=data.phase==='aim'?'Zablokuj kierunek ↗':'Potwierdź kulkę ↗';
     pickEl('selection-note').textContent=pickerError || (data.phase==='aim'?(data.angleLocked||choicePending?'Kierunek zapisany. Czekamy na pozostałych graczy.':'Kierunek można zmienić przed potwierdzeniem.'):(myChoice?`Wybrano ${chosen} z ${data.players.length}. Czekamy na pozostałych.`:'Najpierw wszyscy wybierają kulki; potem ustawią kierunek.'));
   }
   function handleData(data: Snapshot & { type: string; token?: string; message?: string; reward?: number }, requestedType='') {
@@ -243,24 +242,6 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     }
   };
   el('rematch').onclick = () => send({type:'rematch'});
-  pickEl('selection-direction').addEventListener('click',event=>{
-    const button=(event.target as HTMLElement).closest<HTMLButtonElement>('[data-angle]');
-    if(button && canAim)setAngleDegrees(Number(button.dataset.angle));
-  });
-  const directionPad=pickEl('selection-direction');
-  let directionPointer:number|null=null;
-  function pointDirection(event:PointerEvent){
-    const rect=directionPad.getBoundingClientRect();
-    const x=event.clientX-(rect.left+rect.width/2),y=event.clientY-(rect.top+rect.height/2);
-    if(canAim&&Math.hypot(x,y)>=8)setAngleDegrees(Math.atan2(y,x)*180/Math.PI);
-  }
-  directionPad.addEventListener('pointerdown',event=>{
-    if(!canAim)return;
-    directionPointer=event.pointerId;directionPad.setPointerCapture(event.pointerId);pointDirection(event);
-  });
-  directionPad.addEventListener('pointermove',event=>{if(directionPointer===event.pointerId)pointDirection(event);});
-  directionPad.addEventListener('pointerup',event=>{if(directionPointer===event.pointerId)directionPointer=null;});
-  directionPad.addEventListener('pointercancel',()=>{directionPointer=null;});
   if(sessionToken && !hosted)send({type:'resume',token:sessionToken});
   return { showMenu(){panel.hidden=false;el('profile-strip').hidden=false;el('collection-panel').hidden=true;el('network-status').hidden=false;el('mode-options').hidden=false;el('join-controls').hidden=!onlineConfigured;el('room-actions').hidden=true;}, leave(){leaving=true;send({type:'leave'});}, setAngle(angle: number) {
     if (!canAim) return;
