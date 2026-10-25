@@ -41,7 +41,7 @@ Nie grano w Roblox i nie obejrzano nagrań. Dwa znalezione adresy YouTube nie zo
 ## Własne zasady — nie są danymi z Roblox
 
 - Mecz do 3 wygranych rund, konfigurowalne `winsToMatch`. W 2v2 punkt otrzymuje drużyna po eliminacji obu przeciwników. Brak obrażeń sojuszniczych; sojusznicy fizycznie się odbijają.
-- Wybór kulki i kierunku bez limitu czasu; walka rusza po zatwierdzeniu wszystkich graczy. Prezentacja wyniku rundy 5 s. Brak wejść sterujących w fazie walki.
+- Wybór kulki i kierunku bez limitu czasu w dwóch kolejnych krokach: najpierw wszyscy wybierają kulki, potem każdy ustawia i zatwierdza kierunek. Prezentacja wyniku rundy 5 s. Brak wejść sterujących w fazie walki.
 - Każdy gracz dostaje trzy różne definicje z dostępnej puli. Testowo wszystkie osiem dostępne. Wybór z kolekcji zużywany dopiero po zatwierdzeniu przez serwer.
 - Walka najwyżej 60 s: od 45 s nieuniknione obrażenia narastające, przy 60 s porównanie średniego pozostałego HP/maxHP drużyn (polegli liczeni jako zero). Równość lub równoczesna eliminacja oznacza remis bez punktu. Limit 9 rund; potem wynik z punktów lub remis meczu, aby seria remisów nie trwała wiecznie.
 - Arena płaska 20 × 20 jednostek; obecne promienie, HP i szybkości są w `src/shared/config.ts`. Brak grawitacji w symulacji, 3D wyłącznie prezentacyjne.

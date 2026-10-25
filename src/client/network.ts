@@ -9,7 +9,7 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
   const viewport = document.querySelector<HTMLElement>('.viewport')!;
   const overlay = document.createElement('section');
   overlay.id='selection-overlay';overlay.className='selection-overlay';overlay.hidden=true;overlay.setAttribute('aria-label','Wybór kulki przed rundą');
-  overlay.innerHTML=`<div class="selection-shell"><div class="selection-heading"><span class="eyebrow">PRZYGOTOWANIE RUNDY</span><h2>Wybierz swoją kulkę</h2><p>Trzy losowe propozycje. Raz na mecz możesz otworzyć wszystkie dostępne kulki.</p></div><div id="selection-players" class="selection-players"></div><div id="selection-tabs" class="selection-tabs"><button id="offer-tab" type="button">3 losowe kulki</button><button id="collection-tab" type="button">Moje kulki · raz na mecz</button></div><div id="selection-cards" class="selection-cards" role="group" aria-label="Kulki do wyboru"></div><div id="selection-aim" class="selection-aim"><div class="direction-picker"><div class="direction-grid" id="selection-direction" role="group" aria-label="Ustaw kierunek startowy"><button type="button" data-angle="-135" aria-label="Góra lewo">↖</button><button type="button" data-angle="-90" aria-label="Góra">↑</button><button type="button" data-angle="-45" aria-label="Góra prawo">↗</button><button type="button" data-angle="180" aria-label="Lewo">←</button><i aria-hidden="true"></i><button type="button" data-angle="0" aria-label="Prawo" aria-pressed="true">→</button><button type="button" data-angle="135" aria-label="Dół lewo">↙</button><button type="button" data-angle="90" aria-label="Dół">↓</button><button type="button" data-angle="45" aria-label="Dół prawo">↘</button></div><div class="direction-copy"><strong>Kierunek: <output id="selection-angle-value">0°</output></strong><span>Przeciągnij po kompasie. Strzałkę zobaczysz na arenie.</span></div></div></div><div class="selection-bottom"><button id="confirm-selection" class="primary" type="button" disabled>Potwierdź kulkę i kierunek ↗</button><p id="selection-note" role="status">Walka zacznie się, gdy wszyscy gracze wybiorą kulki.</p></div></div>`;
+  overlay.innerHTML=`<div class="selection-shell"><div class="selection-heading"><span id="selection-step-label" class="eyebrow">KROK 1 / 2</span><h2 id="selection-step-title">Wybierz kulkę</h2><p id="selection-step-hint">Trzy losowe propozycje albo cała kolekcja raz na mecz.</p></div><div id="selection-players" class="selection-players"></div><div id="selection-tabs" class="selection-tabs"><button id="offer-tab" type="button">3 losowe kulki</button><button id="collection-tab" type="button">Moje kulki · raz na mecz</button></div><div id="selection-cards" class="selection-cards" role="group" aria-label="Kulki do wyboru"></div><div id="selection-aim" class="selection-aim"><div class="direction-picker"><div class="direction-grid" id="selection-direction" role="group" aria-label="Ustaw kierunek startowy"><button type="button" data-angle="-135" aria-label="Góra lewo">↖</button><button type="button" data-angle="-90" aria-label="Góra">↑</button><button type="button" data-angle="-45" aria-label="Góra prawo">↗</button><button type="button" data-angle="180" aria-label="Lewo">←</button><i aria-hidden="true"></i><button type="button" data-angle="0" aria-label="Prawo" aria-pressed="true">→</button><button type="button" data-angle="135" aria-label="Dół lewo">↙</button><button type="button" data-angle="90" aria-label="Dół">↓</button><button type="button" data-angle="45" aria-label="Dół prawo">↘</button></div><div class="direction-copy"><strong>Kierunek: <output id="selection-angle-value">0°</output></strong><span>Przeciągnij po kompasie. Strzałkę zobaczysz na arenie.</span></div></div></div><div class="selection-bottom"><button id="confirm-selection" class="primary" type="button" disabled>Potwierdź kulkę i kierunek ↗</button><p id="selection-note" role="status">Walka zacznie się, gdy wszyscy gracze wybiorą kulki.</p></div></div>`;
   viewport.append(overlay);
   const pickEl=<T extends HTMLElement>(id:string)=>overlay.querySelector<T>('#'+id)!;
   const code = el<HTMLInputElement>('room-code');
@@ -54,6 +54,9 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     const myChoice=!!data.pick || choicePending;
     const choosing=data.phase==='select'&&!myChoice;
     const aiming=data.phase==='aim'&&!data.angleLocked&&!choicePending;
+    pickEl('selection-step-label').textContent=data.phase==='aim'?'KROK 2 / 2':'KROK 1 / 2';
+    pickEl('selection-step-title').textContent=data.phase==='aim'?'Ustaw kierunek':'Wybierz kulkę';
+    pickEl('selection-step-hint').textContent=data.phase==='aim'?'Przeciągnij po kompasie i zatwierdź kierunek startu.':'Wybierz jedną z trzech propozycji albo skorzystaj z kolekcji.';
     pickEl('selection-players').innerHTML=data.players.map((player,i)=>`<div class="selection-player ${player.chosen?'is-chosen':''}"><span>${i===data.slot?'TY':player.bot?'BOT':`GRACZ ${i+1}`} <small>DRUŻYNA ${player.team+1}</small></span><b>${player.chosen?'WYBRANO':'WYBIERA…'}</b></div>`).join('');
     pickEl('selection-tabs').hidden=!choosing;
     pickEl<HTMLButtonElement>('offer-tab').setAttribute('aria-pressed',String(!collectionView));
@@ -84,8 +87,8 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     pickEl('selection-aim').hidden=!choosing&&!aiming;
     confirm.hidden=!choosing&&!aiming;
     confirm.disabled=choicePending || (choosing&&!selectedId);
-    confirm.textContent=data.phase==='aim'?'Potwierdź kierunek ↗':'Potwierdź kulkę i kierunek ↗';
-    pickEl('selection-note').textContent=pickerError || (myChoice?`Wybrano ${chosen} z ${data.players.length}. Walka ruszy po decyzji wszystkich.`:'Walka ruszy, gdy wszyscy gracze potwierdzą kulkę i kierunek.');
+    confirm.textContent=data.phase==='aim'?'Potwierdź kierunek ↗':'Potwierdź kulkę ↗';
+    pickEl('selection-note').textContent=pickerError || (data.phase==='aim'?(data.angleLocked||choicePending?'Kierunek zapisany. Czekamy na pozostałych graczy.':'Kierunek można zmienić przed potwierdzeniem.'):(myChoice?`Wybrano ${chosen} z ${data.players.length}. Czekamy na pozostałych.`:'Najpierw wszyscy wybierają kulki; potem ustawią kierunek.'));
   }
   function handleData(data: Snapshot & { type: string; token?: string; message?: string }, requestedType='') {
       if (data.type === 'error') { status.textContent = data.message || 'Błąd serwera';pickerError=data.message || 'Błąd serwera';choicePending=false;renderPicker(); if(requestedType==='resume' && hosted){sessionStorage.removeItem('orbita-room-token');sessionStorage.removeItem('orbita-room-code');sessionToken=null;sessionCode=null;onLeave();} return; }
@@ -194,7 +197,7 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     if(currentState.phase==='select'){
       if(!selectedId)return;
       choicePending=true;canAim=false;renderPicker();
-      send({type:'select',id:selectedId,collection:collectionView,angle});
+      send({type:'select',id:selectedId,collection:collectionView});
     }else if(currentState.phase==='aim'){
       choicePending=true;canAim=false;renderPicker();send({type:'aim',angle});
     }

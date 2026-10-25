@@ -22,7 +22,7 @@ app.innerHTML = `
         <div class="viewport">
           <div class="arena-label"><span class="live-dot"></span><span id="phase-label">GOTOWOŚĆ</span><span class="arena-number">ARENA 01</span></div>
           <div id="scene"></div>
-          <div id="home-overlay" class="home-overlay"><div class="home-shell"><div class="home-heading"><span class="eyebrow">ORBITA / STARCIE</span><h1 id="home-title">Wybierz tryb gry<span>.</span></h1><p id="home-subtitle">Wybierz kulkę, ustaw kierunek i patrz, jak walczy.</p></div><div class="home-content"><section id="local-panel" class="local-panel" data-side="local" hidden><button id="local-back" class="back-button" type="button">← Wróć do trybów</button><span class="eyebrow">TRENING LOKALNY</span><h2>Przygotuj pojedynek</h2><span id="status" class="status">Gotowe</span><p id="hint" class="hint">Wybierz kulki i kierunek startowy.</p><div id="local-aim" class="aim-picker"><div class="local-side-tabs" role="group" aria-label="Wybierz stronę"><button type="button" data-side="local" aria-pressed="true">Twoja kulka</button><button type="button" data-side="rival" aria-pressed="false">Rywal</button></div><div class="local-choice-pair"><div><label for="local-ball">Twoja kulka</label><select id="local-ball">${MATCH_BALLS.map(b => `<option value="${b.id}">${b.name} · ${b.ability}</option>`).join('')}</select></div><div><label for="rival-ball">Rywal</label><select id="rival-ball">${MATCH_BALLS.map(b => `<option value="${b.id}" ${b.id === 'jade' ? 'selected' : ''}>${b.name} · ${b.ability}</option>`).join('')}</select></div></div><div class="local-direction-row"><div class="direction-grid" id="local-direction" role="group" aria-label="Ustaw kierunek startowy"><button type="button" data-angle="-135" aria-label="Góra lewo">↖</button><button type="button" data-angle="-90" aria-label="Góra">↑</button><button type="button" data-angle="-45" aria-label="Góra prawo">↗</button><button type="button" data-angle="180" aria-label="Lewo">←</button><i aria-hidden="true"></i><button type="button" data-angle="0" aria-label="Prawo" aria-pressed="true">→</button><button type="button" data-angle="135" aria-label="Dół lewo">↙</button><button type="button" data-angle="90" aria-label="Dół">↓</button><button type="button" data-angle="45" aria-label="Dół prawo">↘</button></div><p>Przeciągnij po kompasie; kierunek pokaże strzałka na arenie.</p></div><p>Walka zacznie się po kliknięciu przycisku. Podczas walki kulki poruszają się same.</p></div><button id="start" class="primary">Rozpocznij pojedynek <span>↗</span></button></section></div></div></div>
+          <div id="home-overlay" class="home-overlay"><div class="home-shell"><div class="home-heading"><span class="eyebrow">ORBITA / STARCIE</span><h1 id="home-title">Wybierz tryb gry<span>.</span></h1><p id="home-subtitle">Wybierz kulkę, ustaw kierunek i patrz, jak walczy.</p></div><div class="home-content"><section id="local-panel" class="local-panel" data-side="local" hidden><button id="local-back" class="back-button" type="button">← Wróć do trybów</button><span class="eyebrow">TRENING LOKALNY</span><h2 id="local-step-title">Wybierz kulki · krok 1/2</h2><span id="status" class="status">Gotowe</span><p id="hint" class="hint">Wybierz kulki i kierunek startowy.</p><div id="local-aim" class="aim-picker"><div id="local-ball-selection"><div class="local-side-tabs" role="group" aria-label="Wybierz stronę"><button type="button" data-side="local" aria-pressed="true">Twoja kulka</button><button type="button" data-side="rival" aria-pressed="false">Rywal</button></div><div class="local-choice-pair"><div><label for="local-ball">Twoja kulka</label><select id="local-ball">${MATCH_BALLS.map(b => `<option value="${b.id}">${b.name} · ${b.ability}</option>`).join('')}</select></div><div><label for="rival-ball">Rywal</label><select id="rival-ball">${MATCH_BALLS.map(b => `<option value="${b.id}" ${b.id === 'jade' ? 'selected' : ''}>${b.name} · ${b.ability}</option>`).join('')}</select></div></div></div><div id="local-direction-step" hidden><button id="local-balls-back" class="back-button" type="button">← Wróć do kulek</button><div class="local-direction-row"><div class="direction-grid" id="local-direction" role="group" aria-label="Ustaw kierunek startowy"><button type="button" data-angle="-135" aria-label="Góra lewo">↖</button><button type="button" data-angle="-90" aria-label="Góra">↑</button><button type="button" data-angle="-45" aria-label="Góra prawo">↗</button><button type="button" data-angle="180" aria-label="Lewo">←</button><i aria-hidden="true"></i><button type="button" data-angle="0" aria-label="Prawo" aria-pressed="true">→</button><button type="button" data-angle="135" aria-label="Dół lewo">↙</button><button type="button" data-angle="90" aria-label="Dół">↓</button><button type="button" data-angle="45" aria-label="Dół prawo">↘</button></div><p>Przeciągnij po kompasie; kierunek pokaże strzałka na arenie.</p></div><p>Walka zacznie się po kliknięciu przycisku. Podczas walki kulki poruszają się same.</p></div></div><button id="start" class="primary">Rozpocznij pojedynek <span>↗</span></button></section></div></div></div>
           <div class="floor-label">ORBITA <span> / </span> COLLISION LAB</div>
           <div id="result" class="result" hidden role="status"><span class="eyebrow">POJEDYNEK ZAKOŃCZONY</span><h2 id="result-title"></h2><p id="result-detail"></p><button id="replay" class="primary">Przygotuj kolejny pojedynek <span>↗</span></button></div>
         </div>
@@ -38,6 +38,7 @@ let world = createWorld(seed, localPicks);
 let running = false, paused = false, speed = 1, accumulator = 0;
 let online = false;
 let localAngle = 0;
+let localSetupStep: 'balls' | 'aim' = 'balls';
 let onlineAim: { setAngle: (angle: number) => void; canAim: () => boolean; showMenu: () => void; leave: () => void } | undefined;
 let lastNetworkPhase = '';
 const audio = new GameAudio();
@@ -47,7 +48,7 @@ try {
   arena = new Arena(get('scene'));
   arena.setLowEffects(lowEffects);
   arena.reset(world);
-  arena.setAimPreview(world, 0, localAngle);
+  arena.clearAimPreview();
 } catch (error) {
   get('scene').innerHTML = '<p class="graphics-error">Nie udało się uruchomić grafiki 3D. Włącz WebGL lub użyj przeglądarki z akceleracją sprzętową.</p>';
   get<HTMLButtonElement>('start').disabled = true;
@@ -96,6 +97,17 @@ function updateHud() {
   get('seed').textContent = `#${String(seed).padStart(4, '0')}`;
 }
 updateHud();
+
+function setLocalSetupStep(step: 'balls' | 'aim') {
+  localSetupStep = step;
+  get('local-ball-selection').hidden = step === 'aim';
+  get('local-direction-step').hidden = step === 'balls';
+  get('local-step-title').textContent = step === 'balls' ? 'Wybierz kulki · krok 1/2' : 'Ustaw kierunek · krok 2/2';
+  get('hint').textContent = step === 'balls' ? 'Wybierz kulki obu graczy, a potem przejdź do kierunku.' : 'Ustaw tor startowy na kompasie. Możesz wrócić do wyboru kulek.';
+  get('start').innerHTML = step === 'balls' ? 'Dalej: ustaw kierunek <span>→</span>' : 'Rozpocznij pojedynek <span>↗</span>';
+  if (step === 'aim') arena.setAimPreview(world, 0, localAngle);
+  else arena.clearAimPreview();
+}
 
 for(const id of ['local-ball','rival-ball'] as const){
   const select=get<HTMLSelectElement>(id);
@@ -151,6 +163,7 @@ function prepareNext() {
   get('hint').textContent = 'Wybierz kierunek na kompasie albo przeciągnij po nim, a potem rozpocznij pojedynek.';
   get<HTMLButtonElement>('start').disabled = false;
   get('start').innerHTML = 'Rozpocznij pojedynek <span>↗</span>';
+  setLocalSetupStep('balls');
   updateHud();
 }
 
@@ -163,7 +176,11 @@ function togglePause() {
   get('phase-label').textContent = paused ? 'PAUZA' : 'WALKA W TOKU';
 }
 
-get('start').addEventListener('click', () => world.phase === 'finished' ? prepareNext() : start());
+get('start').addEventListener('click', () => {
+  if (world.phase === 'finished') prepareNext();
+  else if (!online && !get('local-panel').hidden && localSetupStep === 'balls') setLocalSetupStep('aim');
+  else start();
+});
 get('replay').addEventListener('click', prepareNext);
 get('exit-match').addEventListener('click', () => online ? onlineAim?.leave() : location.reload());
 get('pause').addEventListener('click', togglePause);
@@ -172,6 +189,7 @@ get('speed').addEventListener('click', () => {
   get('speed').textContent = `Tempo ${speed}×`;
 });
 get('local-back').addEventListener('click', () => {
+  setLocalSetupStep('balls');
   get('local-panel').hidden = true;
   get('local-aim').hidden = false;
   get('result').hidden = true;
@@ -180,12 +198,15 @@ get('local-back').addEventListener('click', () => {
   get('home-subtitle').textContent='Wybierz kulkę, ustaw kierunek i patrz, jak walczy.';
   onlineAim?.showMenu();
 });
+get('local-balls-back').addEventListener('click', () => setLocalSetupStep('balls'));
 for (const [id, slot] of [['local-ball', 0], ['rival-ball', 1]] as const) {
   get<HTMLSelectElement>(id).addEventListener('change', event => {
     localPicks[slot] = (event.target as HTMLSelectElement).value;
     if (online || running) return;
     world = createWorld(seed, localPicks);
-    arena.reset(world); arena.setAimPreview(world, 0, localAngle); updateHud();
+    arena.reset(world);
+    if (localSetupStep === 'aim') arena.setAimPreview(world, 0, localAngle); else arena.clearAimPreview();
+    updateHud();
     get('result').hidden = true;
     get('phase-label').textContent = 'GOTOWOŚĆ';
     get('status').textContent = 'Gotowe';
@@ -196,7 +217,7 @@ function setLocalAngle(degrees: number) {
   localAngle = value * Math.PI / 180;
   document.querySelectorAll<HTMLButtonElement>('#local-direction [data-angle]').forEach(button =>
     button.setAttribute('aria-pressed', String(Number(button.dataset.angle) === value)));
-  if (!online && !running) arena.setAimPreview(world, 0, localAngle);
+  if (!online && !running && localSetupStep === 'aim') arena.setAimPreview(world, 0, localAngle);
 }
 get('local-direction').addEventListener('click', event => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-angle]');
@@ -359,5 +380,6 @@ onlineAim = connectRooms(state => {
   get('local-panel').hidden = false;
   get('home-overlay').hidden = false;
   get('local-aim').hidden = false;
+  setLocalSetupStep('balls');
   document.querySelector('.mode')!.textContent = 'TRENING LOKALNY';
 });

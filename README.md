@@ -1,6 +1,6 @@
 # Orbita: Starcie
 
-Autorska przeglądarkowa gra z automatycznymi pojedynkami kulek. Działa gra lokalna, sieciowe 1v1 i 2v2 oraz trening z botem. Na pełnoekranowym menu wybiera się tryb, a w sieciowym meczu każdy gracz zatwierdza jedną z trzech losowych kulek albo raz na mecz wybiera z dostępnej kolekcji oraz ustawia kierunek. Walka rusza po decyzjach wszystkich graczy. Osiem autorskich kulek ma odrębne moce, a utrata HP pojawia się w dymkach nad areną. Arena jest kwadratowa 20 × 20 i nie pokazuje licznika czasu; wewnętrzna dogrywka chroni tylko przed zablokowanym pojedynkiem. Zasady i parametry są własną interpretacją, nie statystykami Roblox.
+Autorska przeglądarkowa gra z automatycznymi pojedynkami kulek. Działa gra lokalna, sieciowe 1v1 i 2v2 oraz trening z botem. Przygotowanie meczu ma dwa osobne kroki: wybór kulki, a potem ustawienie kierunku. W sieciowym meczu każdy zatwierdza jedną z trzech losowych kulek albo raz na mecz wybiera z dostępnej kolekcji; kierunek wybiera po zakończeniu wyboru przez wszystkich graczy. Osiem autorskich kulek ma odrębne moce, a utrata HP pojawia się w dymkach nad areną. Arena jest kwadratowa 20 × 20 i nie pokazuje licznika czasu; wewnętrzna dogrywka chroni tylko przed zablokowanym pojedynkiem. Zasady i parametry są własną interpretacją, nie statystykami Roblox.
 
 ## Uruchomienie
 
@@ -11,7 +11,7 @@ node node_modules/tsx/dist/cli.mjs src/server/index.ts
 node node_modules/vite/bin/vite.js --host 127.0.0.1
 ```
 
-Otwórz [grę lokalną](http://127.0.0.1:5173/). Kliknij tryb na ekranie startowym. W grze lokalnej wybierz obie kulki, ustaw kierunek jedną z ośmiu strzałek albo przeciągnij po kompasie, potem rozpocznij pojedynek. Na telefonie przyciski „Twoja kulka” i „Rywal” przełączają wybór; kompas służy do celowania dotykiem. Aby zagrać online na tym samym serwerze, jeden gracz tworzy pokój, drugi dołącza kodem lub linkiem, obaj potwierdzają gotowość i dokonują wyborów. Domyślny mecz trwa do trzech punktów i najwyżej dziewięć rund. `WINS_TO_MATCH=1` skraca próby testowe. Przyciski pod areną sterują wyciszeniem i jakością efektów; na wąskim ekranie włączają się lekkie efekty. Vite proxy kieruje `/ws` do serwera na porcie 3001; samo `vite preview` tego proxy nie zapewnia.
+Otwórz [grę lokalną](http://127.0.0.1:5173/). Kliknij tryb na ekranie startowym. W grze lokalnej wybierz obie kulki i kliknij „Dalej: ustaw kierunek”. Na kolejnym ekranie wskaż tor jedną z ośmiu strzałek albo przeciągnij po kompasie, a potem rozpocznij pojedynek. Na telefonie przyciski „Twoja kulka” i „Rywal” przełączają wybór; kompas służy do celowania dotykiem. Aby zagrać online na tym samym serwerze, jeden gracz tworzy pokój, drugi dołącza kodem lub linkiem, obaj potwierdzają gotowość, wybierają kulki, a następnie ustawiają kierunek. Domyślny mecz trwa do trzech punktów i najwyżej dziewięć rund. `WINS_TO_MATCH=1` skraca próby testowe. Przyciski pod areną sterują wyciszeniem i jakością efektów; na wąskim ekranie włączają się lekkie efekty. Vite proxy kieruje `/ws` do serwera na porcie 3001; samo `vite preview` tego proxy nie zapewnia.
 
 Przy pierwszym uruchomieniu zainstaluj zależności przez `pnpm install`. Testy i build:
 

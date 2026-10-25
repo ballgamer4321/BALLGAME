@@ -107,7 +107,7 @@ export async function handleHostedAction(store: HostedStore, action: HostedActio
 
     if (action.type === 'ready') gameAction(() => rooms.setReady(player, randomBytes(4).readUInt32LE()));
     else if (action.type === 'select') {
-      if (typeof action.id !== 'string' || typeof action.collection !== 'boolean' || typeof action.angle !== 'number') throw new HostedError('Nieprawidłowy wybór');
+      if (typeof action.id !== 'string' || typeof action.collection !== 'boolean' || (action.angle !== undefined && typeof action.angle !== 'number')) throw new HostedError('Nieprawidłowy wybór');
       gameAction(() => rooms.select(player, action.id!, action.collection!, action.angle));
     }
     else if (action.type === 'aim') {
