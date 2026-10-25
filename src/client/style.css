@@ -412,6 +412,55 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
   .home-shell{width:min(100%,840px)}
   .battle:has(.home-overlay:not([hidden])) .viewport::before{inset:7% 5%}
 }
+
+/* Clean title treatment with a quiet, game-like entrance and ambient motion. */
+.brand{width:44px;height:44px;justify-content:center;gap:0;letter-spacing:0}
+.brand-symbol{position:relative;width:42px;height:42px;overflow:hidden;border-color:#4a5b4d;border-radius:13px;background:linear-gradient(145deg,#1d2a22,#111815);box-shadow:inset 0 1px #ffffff12,0 7px 22px #0004}
+.brand-orbit{position:absolute;width:23px;height:14px;border:1px solid #c9e98a;border-radius:50%;transform:rotate(-35deg);animation:brand-orbit-spin 7s linear infinite}
+.brand-orbit::after{position:absolute;top:0;right:0;width:5px;height:5px;border-radius:50%;background:#e5f7bd;box-shadow:0 0 10px #c9e98a;content:""}
+.brand-core{position:absolute;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#f8ffe8,#c9e98a 55%,#76944c);box-shadow:0 0 13px #c9e98a8a;animation:brand-core-float 2.8s ease-in-out infinite}
+.build-label{display:flex;align-items:center;gap:8px}
+.build-state{width:6px;height:6px;border-radius:50%;background:#c9e98a;box-shadow:0 0 0 4px #c9e98a15;animation:status-glint 2.4s ease-in-out infinite}
+.home-wordmark{z-index:1;animation:wordmark-arrive .72s cubic-bezier(.2,.75,.25,1) .08s both}
+.home-wordmark>span{text-shadow:0 3px 0 #1c2b20,0 0 32px #c9e98a28;animation:wordmark-light 6s ease-in-out 1s infinite alternate}
+.home-wordmark>small{color:#aebbb0}
+.home-heading::after{content:"24 KULEK   ·   4 TRYBY   ·   1–4 GRACZY"}
+.home-shell{position:relative;z-index:1}
+.home-overlay:not([hidden]):not(.is-aiming):not(:has(#local-panel:not([hidden])))::before{
+  position:absolute;z-index:0;inset:-10%;pointer-events:none;content:"";opacity:.8;
+  background:radial-gradient(ellipse at 18% 62%,#83bd571b,transparent 25%),radial-gradient(ellipse at 82% 31%,#79d9d016,transparent 21%),radial-gradient(ellipse at 52% 100%,#c9e98a0d,transparent 40%);
+  animation:menu-atmosphere 18s ease-in-out infinite alternate
+}
+.home-overlay:not([hidden]):not(.is-aiming):not(:has(#local-panel:not([hidden]))) .home-shell{animation:menu-enter .72s cubic-bezier(.2,.75,.25,1) both}
+.home-heading .eyebrow,.home-heading h1,.home-heading p{animation:copy-enter .48s cubic-bezier(.2,.7,.25,1) both}
+.home-heading .eyebrow{animation-delay:.13s}.home-heading h1{animation-delay:.2s}.home-heading p{animation-delay:.27s}
+.home-heading::after{animation:copy-enter .48s cubic-bezier(.2,.7,.25,1) .31s both}
+.home-network #network-status{animation:copy-enter .42s ease-out .3s both}
+#profile-strip{animation:copy-enter .48s ease-out .3s both}
+#mode-options:not([hidden])>.mode-card{animation:card-enter .5s cubic-bezier(.2,.75,.25,1) backwards}
+#mode-options>.mode-card:nth-child(1){animation-delay:.25s}#mode-options>.mode-card:nth-child(2){animation-delay:.34s}
+#mode-options>.mode-card:nth-child(3){animation-delay:.43s}#mode-options>.mode-card:nth-child(4){animation-delay:.52s}
+#join-controls:not([hidden]){animation:copy-enter .46s ease-out .58s both}
+.mode-card-icon{transition:transform .35s cubic-bezier(.2,.8,.2,1),border-color .2s ease,color .2s ease}
+.mode-card:hover:not(:disabled) .mode-card-icon{transform:rotate(-7deg) scale(1.06);border-color:#91aa72}
+.mode-card:hover:not(:disabled) strong{color:#e5f3cf}
+.mode-card-arrow{transition:transform .25s cubic-bezier(.2,.8,.2,1),color .2s ease}
+.primary span{display:inline-block;transition:transform .2s ease}
+.primary:hover:not(:disabled) span{transform:translate(3px,-2px)}
+.home-overlay:has(#local-panel:not([hidden]))::before{display:none}
+@keyframes brand-orbit-spin{from{transform:rotate(-35deg)}to{transform:rotate(325deg)}}
+@keyframes brand-core-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+@keyframes status-glint{0%,100%{opacity:.7;box-shadow:0 0 0 3px #c9e98a12}50%{opacity:1;box-shadow:0 0 0 5px #c9e98a1c}}
+@keyframes menu-atmosphere{from{transform:translate3d(-1.2%,.7%,0) scale(.98)}to{transform:translate3d(1.2%,-.7%,0) scale(1.03)}}
+@keyframes menu-enter{from{opacity:0;transform:translateY(16px) scale(.985);filter:blur(5px)}to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
+@keyframes wordmark-arrive{from{opacity:0;transform:translateY(-9px);letter-spacing:.09em}to{opacity:1;transform:translateY(0);letter-spacing:.035em}}
+@keyframes wordmark-light{from{text-shadow:0 3px 0 #1c2b20,0 0 20px #c9e98a12}to{text-shadow:0 3px 0 #1c2b20,0 0 35px #c9e98a38}}
+@keyframes copy-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes card-enter{from{opacity:0;transform:translateY(12px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){
+  .brand-orbit,.brand-core,.build-state,.home-overlay::before,.home-wordmark,.home-wordmark>span,.home-shell,.home-heading .eyebrow,.home-heading h1,.home-heading p,.home-heading::after,.home-network #network-status,#profile-strip,#mode-options>.mode-card,#join-controls{animation:none!important}
+  .mode-card-icon,.mode-card-arrow,.primary span{transition:none!important}
+}
 .profile-coin-count{display:grid;justify-items:center;gap:3px;min-width:58px;padding:6px 9px;border:1px solid #536845;border-radius:8px;background:#131d16;color:#d7f786}
 .profile-coin-count>strong{font-family:Consolas,monospace;font-size:16px}
 .profile-coin-count>span{font-size:7px;letter-spacing:.12em;color:#aebca7}

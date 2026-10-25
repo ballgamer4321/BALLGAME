@@ -136,7 +136,7 @@ Aktualnie dostępnych jest 9 własnych kulek. Czasowo wycofane z wyboru, ofert i
 
 ### Ekran startowy — oprawa arcade
 
-Menu główne pokazuje nagłówek BALL VS BALL w lokalnie dołączonym foncie bitmapowym Press Start 2P, krótki podpis THE GAME i przyciemnioną arenę w tle. Karta wyboru trybu jest węższa i ma zachować czytelność na telefonie. Dołączony font jest dystrybuowany z licencją SIL Open Font License.
+Menu główne pokazuje nagłówek BALL VS BALL w lokalnie dołączonym foncie bitmapowym Press Start 2P i podpis MULTIPLAYER / PHYSICS ARENA na tle przyciemnionej areny. Z głównego ekranu usunięto napis „Orbita: Starcie”; w nagłówku została sama animowana ikona kuli. Menu ma subtelne animacje wejścia, rozświetlenie tła i kaskadowe pojawianie się trybów, z respektowaniem `prefers-reduced-motion`. Karty wyboru trybu zachowują czytelność na telefonie. Dołączony font jest dystrybuowany z licencją SIL Open Font License.
 
 ### Rozbudowa katalogu do 54 kulek (2026-10-25)
 
