@@ -470,3 +470,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .header-coin>strong{color:#e7f2d7;font-size:14px}
 .header-coin>span{color:#9eada2;font-size:8px;letter-spacing:.09em}
 @media(max-width:620px){.header-coin{gap:6px;padding:7px 8px}.header-coin>span{font-size:7px}.header-coin>strong{font-size:13px}}
+.home-heading-meta{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:3px}
+.home-heading-meta .mode{min-height:0;gap:7px;padding:0;border:0;border-radius:0;background:transparent;color:#9aa79e;font-size:8px;font-weight:650;letter-spacing:1.1px;white-space:nowrap}
+.home-heading-meta .mode span{width:5px;height:5px;box-shadow:0 0 0 3px #c9e98a12}
+.home-heading-meta .mode{animation:copy-enter .45s ease-out .16s both}
+@media(max-width:380px){.home-heading-meta{gap:8px}.home-heading-meta .eyebrow{font-size:7px;letter-spacing:1.1px}.home-heading-meta .mode{font-size:7px;letter-spacing:.8px}}
+@media(prefers-reduced-motion:reduce){.home-heading-meta .mode{animation:none!important}}
