@@ -1,4 +1,4 @@
-import { MATCH_BALLS } from './config';
+import { MATCH_BALLS } from './config.js';
 
 export const COSMETICS = [
   { id: 'aurora', name: 'Aurora', description: 'Miętowy odcień kulki.', color: '#8df2ca', cost: 0 },
