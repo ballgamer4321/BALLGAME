@@ -4,7 +4,7 @@ Projekt: `C:\Users\antre\Desktop\ball game`; GitHub `https://github.com/ballgame
 
 ## Stan
 
-Etapy 1–6 i 8–9: DONE. Etap 7 pozostaje IN_PROGRESS — brak ręcznego QA 360×800/landscape i pomiaru FPS. Modele wszystkich 14 kulek zostały poprawione i wdrożone. Topór ma wyraźny drewniany trzonek, zakrzywione metalowe ostrze z jasną krawędzią i krąży wokół kulki; obraca się szybciej przy niskim HP, tak jak w Robloxowej inspiracji. Pozostałe kulki mają własne dodatki rozpoznawalne po sylwetce. Broń jest animowana zamiast pulsujących aureoli. Produkcja READY; strona i API 1v1 odpowiadają poprawnie. Ręcznego obrazu nie sprawdzono.
+Etapy 1–6 i 8–9: DONE. Etap 7 pozostaje IN_PROGRESS — brak ręcznego QA 360×800/landscape i pomiaru FPS. Modele wszystkich 14 kulek zostały poprawione i wdrożone. Topór ma wyraźny drewniany trzonek, zakrzywione metalowe ostrze z jasną krawędzią i krąży wokół kulki; obraca się szybciej przy niskim HP, tak jak w Robloxowej inspiracji. Pozostałe kulki mają własne dodatki rozpoznawalne po sylwetce. Broń jest animowana zamiast pulsujących aureoli. Kod a3912d4 wdrożony przez Vercel production READY; strona HTTP 200, API 1v1 online. Ręcznego obrazu nie sprawdzono.
 
 ## Uruchomienie i weryfikacja
 

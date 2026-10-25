@@ -11,7 +11,7 @@ Aktualizacja: 2026-10-25. Etap 7 — oprawa i telefony: IN_PROGRESS. Etapy 1–6
 ## Weryfikacja i wdrożenie
 
 - TypeScript, build Vite i `git diff --check` — OK dla poprawki topora; chunk Three.js 497,65 kB, bez ostrzeżenia o rozmiarze. Wcześniej 48/48 testów.
-- Kod modeli: GitHub `main`, commit `04ca5a0`; Vercel production READY. Alias `https://ballgame-tawny.vercel.app/`: HTTP 200; `/api/room`: `online:true`; klientowy chunk: HTTP 200.
+- Kod modeli: GitHub `main`, commit `a3912d4`; Vercel production READY, deployment `dpl_GebA7kdKaFychEQNuoJqxns36wPb`. Alias `https://ballgame-tawny.vercel.app/`: HTTP 200; `/api/room`: `online:true`; nowy chunk klienta: HTTP 200.
 - Nadal nie wykonano ręcznej kontroli obrazu, widoków 360×800/landscape ani pomiaru FPS. Nie omijać wcześniejszej blokady narzędzia przeglądarki.
 
 ## Dokładny następny krok
