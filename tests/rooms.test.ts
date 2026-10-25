@@ -90,6 +90,17 @@ it('removes retired ball ids from stored rooms and their current offers', () => 
   expect(['beam', 'violet', 'amber', 'machine', 'gold'].some(id => [...a.offer, ...b.offer].includes(id))).toBe(false);
 });
 
+it('keeps newly added balls locked when restoring a legacy room without saved inventory', () => {
+  const rooms = new Rooms(); rooms.create('a', 'OLDNEW'); rooms.join('b', 'OLDNEW');
+  const oldRoom = serializeRoom(rooms.forPlayer('a')) as Partial<StoredRoom>;
+  delete oldRoom.ownedBalls;
+  const restored = new Rooms(); restored.importRoom(oldRoom as StoredRoom);
+  const inventory = restored.snapshot('a').ownedBalls;
+  expect(inventory).toContain('thief');
+  expect(inventory).not.toContain('vampire');
+  expect(inventory).not.toContain('ice-cone');
+});
+
 it('rejects excess membership and cleans up abandoned rooms', () => {
   const rooms = new Rooms();
   rooms.create('a', 'ABC123'); rooms.join('b', 'ABC123');

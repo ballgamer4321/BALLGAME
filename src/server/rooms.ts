@@ -1,5 +1,5 @@
-import { MATCH_BALLS } from '../shared/config.js';
-import { STARTER_BALL_IDS } from '../shared/progression.js';
+import { MATCH_BALLS, RULES } from '../shared/config.js';
+import { LEGACY_OWNED_BALL_IDS, STARTER_BALL_IDS } from '../shared/progression.js';
 import { randomUUID } from 'node:crypto';
 import { seededRandom } from '../shared/random.js';
 import { createWorld, stepWorld, type World } from '../simulation/world.js';
@@ -30,7 +30,7 @@ export function deserializeRoom(data: StoredRoom): Room {
   const allBallIds = MATCH_BALLS.map(ball => ball.id);
   const validBallIds = new Set<string>(allBallIds);
   const ownedBalls = Object.fromEntries(data.players.map(player => {
-    const stored = data.ownedBalls?.[player] ?? allBallIds;
+    const stored = data.ownedBalls?.[player] ?? LEGACY_OWNED_BALL_IDS;
     const validOwned = Array.isArray(stored) ? stored.filter((id): id is string => validBallIds.has(id)) : [];
     return [player, [...new Set<string>([...STARTER_BALL_IDS, ...validOwned])]];
   }));
@@ -45,6 +45,7 @@ export function deserializeRoom(data: StoredRoom): Room {
   }
   const world = data.world ? { ...data.world,
     balls: data.world.balls.map(ball => ({ ...ball, normalSpeed: ball.normalSpeed ?? Math.hypot(ball.vx, ball.vy),
+      form: ball.form ?? 'standard',
       poisonStacks: ball.poisonStacks ?? (ball.poisonedUntil > data.world!.tick ? [{ expiresAt: ball.poisonedUntil, nextDamageAt: ball.poisonTick ?? data.world!.tick + 30 }] : []),
       burnUntil: ball.burnUntil ?? 0, burnNextDamageAt: ball.burnNextDamageAt ?? 0,
       slowEffects: ball.slowEffects ?? (ball.slowedUntil > data.world!.tick ? [{ source: 'legacy', factor: 0.5, expiresAt: ball.slowedUntil }] : []),
@@ -55,10 +56,28 @@ export function deserializeRoom(data: StoredRoom): Room {
       bladeCount: ball.bladeCount ?? 1, bladeNextGrowAt: ball.bladeNextGrowAt ?? 240, bladeAngle: ball.bladeAngle ?? 0,
       bladeNextHitAt: ball.bladeNextHitAt ?? Array(data.world!.balls.length).fill(0), glassNextBurstAt: ball.glassNextBurstAt ?? 0,
       contactNextHitAt: ball.contactNextHitAt ?? {}, axeAngle: ball.axeAngle ?? 0,
-      axeNextHitAt: ball.axeNextHitAt ?? Array(data.world!.balls.length).fill(0) })),
-    events: data.world.events ?? [], projectiles: data.world.projectiles ?? [], lasers: data.world.lasers ?? [],
+      axeNextHitAt: ball.axeNextHitAt ?? Array(data.world!.balls.length).fill(0),
+      vampireTargetId: ball.vampireTargetId ?? null, vampireUntil: ball.vampireUntil ?? 0,
+      vampireNextPulseAt: ball.vampireNextPulseAt ?? 0, vampirePulsesLeft: ball.vampirePulsesLeft ?? 0,
+      cellGrowthLevel: ball.cellGrowthLevel ?? 0, cellNextGrowAt: ball.cellNextGrowAt ?? 300,
+      cellSplitTriggered: ball.cellSplitTriggered ?? false,
+      chessPhase: ball.chessPhase ?? 'idle', chessPhaseUntil: ball.chessPhaseUntil ?? 0,
+      chessStartX: ball.chessStartX ?? 0, chessStartY: ball.chessStartY ?? 0,
+      chessSavedVx: ball.chessSavedVx ?? ball.vx, chessSavedVy: ball.chessSavedVy ?? ball.vy,
+      chessPattern: ball.chessPattern ?? null, chessPath: ball.chessPath ?? [],
+      diceNextDropAt: ball.diceNextDropAt ?? data.world!.tick + 120, iceNextBombAt: ball.iceNextBombAt ?? 0,
+      reforgeActive: ball.reforgeActive ?? false, reforgeDamage: ball.reforgeDamage ?? 3,
+      reforgeAngle: ball.reforgeAngle ?? 0, reforgeTouching: ball.reforgeTouching ?? false,
+      reforgeNextHitAt: ball.reforgeNextHitAt ?? Array(data.world!.balls.length).fill(0) })),
+    events: data.world.events ?? [], projectiles: data.world.projectiles ?? [],
+    lasers: (data.world.lasers ?? []).map(laser => ({ ...laser,
+      start: laser.start ?? -(laser.axis === 'x' ? RULES.width : RULES.height) / 2,
+      end: laser.end ?? (laser.axis === 'x' ? RULES.width : RULES.height) / 2,
+      warningUntil: laser.warningUntil ?? data.world!.tick, nextHitAt: laser.nextHitAt ?? {} })),
     webs: (data.world.webs ?? []).map(web => ({ ...web, createdAt: web.createdAt ?? 0, hitSlots: web.hitSlots ?? [], nextDamageAt: web.nextDamageAt ?? {} })),
-    spikes: data.world.spikes ?? [], shardHitCounts: data.world.shardHitCounts ?? {}, nextShardBurstId: data.world.nextShardBurstId ?? 1,
+    spikes: data.world.spikes ?? [], diceTraps: data.world.diceTraps ?? [], iceBombs: data.world.iceBombs ?? [],
+    hookTethers: data.world.hookTethers ?? [], nextHazardId: data.world.nextHazardId ?? 1,
+    shardHitCounts: data.world.shardHitCounts ?? {}, nextShardBurstId: data.world.nextShardBurstId ?? 1,
     contacts: new Set(data.world.contacts ?? []) } : null;
   return { ...data, matchId: data.matchId ?? `legacy_${data.code}_${data.seed}`, ready: new Set(data.ready ?? []), disconnected: new Map(data.disconnected ?? []),
     forfeited: new Set(data.forfeited ?? []), collectionUsed: new Set(data.collectionUsed ?? []), rematch: new Set(data.rematch ?? []),
@@ -210,6 +229,6 @@ export class Rooms {
     return {code:room.code,matchId:room.matchId,mode:room.mode,slot:room.players.indexOf(player),phase:room.phase,round:room.round,score:[...room.score],deadline:room.deadline?room.deadline-room.clock:0,
       offer:room.offers[player]??[],ownedBalls:room.ownedBalls[player]??[],pick:room.picks[player]??null,angleLocked:room.angles[player]!==undefined,collectionUsed:room.collectionUsed.has(player),rematchReady:room.rematch.size,rematchAvailable:room.forfeited.size===0,
       players:room.players.map((id,slot)=>({ready:room.ready.has(id),chosen:!!room.picks[id],connected:!room.disconnected.has(id)&&!room.forfeited.has(id),bot:id.startsWith('bot:'),team:slot%2})),
-      world:world?{tick:world.tick,seed:world.seed,phase:world.phase,balls:world.balls.map(b=>({...b})),winner:world.winner,reason:world.reason,hits:world.hits,events:world.events.map(e=>({...e})),projectiles:world.projectiles.map(p=>({...p})),lasers:world.lasers.map(laser=>({...laser,nextHitAt:{...laser.nextHitAt}})),webs:world.webs.map(web=>({...web,hitSlots:[...web.hitSlots],nextDamageAt:{...web.nextDamageAt}})),spikes:world.spikes.map(spike=>({...spike})),shardHitCounts:{...world.shardHitCounts},nextShardBurstId:world.nextShardBurstId,contacts:[...world.contacts],collisionLimitHits:world.collisionLimitHits}:null};
+      world:world?{tick:world.tick,seed:world.seed,phase:world.phase,balls:world.balls.map(b=>({...b})),winner:world.winner,reason:world.reason,hits:world.hits,events:world.events.map(e=>({...e})),projectiles:world.projectiles.map(p=>({...p})),lasers:world.lasers.map(laser=>({...laser,nextHitAt:{...laser.nextHitAt}})),webs:world.webs.map(web=>({...web,hitSlots:[...web.hitSlots],nextDamageAt:{...web.nextDamageAt}})),spikes:world.spikes.map(spike=>({...spike})),diceTraps:world.diceTraps.map(trap=>({...trap,nextHitAt:{...trap.nextHitAt}})),iceBombs:world.iceBombs.map(bomb=>({...bomb})),hookTethers:world.hookTethers.map(tether=>({...tether})),nextHazardId:world.nextHazardId,shardHitCounts:{...world.shardHitCounts},nextShardBurstId:world.nextShardBurstId,contacts:[...world.contacts],collisionLimitHits:world.collisionLimitHits}:null};
   }
 }

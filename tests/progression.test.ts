@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { awardMatch, BALL_CRATE_COST, BALL_SHOP, createProgress, equipCosmetic, normalizeProgress, openBallCrate, purchaseCosmetic, rewardForOutcome, STARTER_BALL_IDS } from '../src/shared/progression';
+import { awardMatch, BALL_CRATE_COST, BALL_SHOP, createProgress, equipCosmetic, LEGACY_OWNED_BALL_IDS, normalizeProgress, openBallCrate, purchaseCosmetic, rewardForOutcome, STARTER_BALL_IDS } from '../src/shared/progression';
 import { MATCH_BALLS } from '../src/shared/config';
 import { adsProvider } from '../src/client/ads';
 import { progressIdForToken } from '../api/profile';
@@ -59,7 +59,10 @@ it('sanitizes stored profile fields and cosmetic ownership', () => {
 
 it('migrates existing profiles without ball inventory without removing their collection', () => {
   const migrated = normalizeProgress({ version: 1, createdAt: 1 }, 10);
-  expect(new Set(migrated.ownedBalls)).toEqual(new Set(MATCH_BALLS.map(ball => ball.id)));
+  expect(new Set(migrated.ownedBalls)).toEqual(new Set(LEGACY_OWNED_BALL_IDS));
+  expect(migrated.ownedBalls).toContain('thief');
+  expect(migrated.ownedBalls).not.toContain('vampire');
+  expect(MATCH_BALLS.some(ball => ball.id === 'vampire')).toBe(true);
 });
 
 it('removes retired ball ownership and shop entries while preserving available starters', () => {

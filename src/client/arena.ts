@@ -4,8 +4,9 @@ import { COSMETICS } from '../shared/progression';
 import type { World } from '../simulation/world';
 
 interface EnergyStrip { group: THREE.Group; core: THREE.Mesh; glow: THREE.Mesh; marker: THREE.Mesh; }
-interface ProjectileVisual { orb: THREE.Mesh; streak: THREE.Mesh; }
+interface ProjectileVisual { orb: THREE.Mesh; shard: THREE.Mesh; streak: THREE.Mesh; hook: THREE.Group; }
 interface PowerSpark { mesh: THREE.Mesh; life: number; maxLife: number; vx: number; vz: number; spin: number; }
+interface DiceVisual { group: THREE.Group; pips: THREE.Mesh[]; }
 
 function makeEnergyStrip(): EnergyStrip {
   const group = new THREE.Group();
@@ -266,6 +267,70 @@ function makeBallSignature(id: string, color: string) {
       blade.rotation.x = Math.PI / 2; blade.position.z = 0.65; knife.add(blade);
     }
   }
+  if (id === 'vampire') {
+    const halo = add(new THREE.TorusGeometry(0.82, 0.06, 8, 36), accent, [0, 0.12, 0], [Math.PI / 2, 0, 0]);
+    halo.name = 'vampire-orbit';
+    for (const side of [-1, 1]) forward(new THREE.ConeGeometry(0.16, 0.56, 7), steel,
+      [side * 0.25, 0.12, 1.16], [Math.PI / 2, 0, Math.PI + side * 0.12]);
+    add(new THREE.SphereGeometry(0.15, 12, 10), accent, [0, 0.12, 1.34]);
+  }
+  if (id === 'cell') {
+    const membrane = add(new THREE.TorusGeometry(1.02, 0.075, 8, 36), accent, [0, 0.15, 0], [Math.PI / 2, 0, 0]);
+    membrane.name = 'cell-membrane';
+    add(new THREE.SphereGeometry(0.26, 16, 12), steel, [0.08, 0.22, 0.96]);
+    for (const [x, z] of [[-0.48, 0.74], [0.52, -0.55], [-0.64, -0.32]] as const)
+      add(new THREE.SphereGeometry(0.14, 12, 10), accent, [x, 0.15, z]);
+  }
+  if (id === 'chess') {
+    add(new THREE.CylinderGeometry(0.43, 0.52, 0.16, 8), dark, [0, 0.12, 0.7]);
+    add(new THREE.CylinderGeometry(0.32, 0.4, 0.72, 8), accent, [0, 0.12, 0.96]);
+    add(new THREE.CylinderGeometry(0.48, 0.48, 0.12, 8), steel, [0, 0.12, 1.36]);
+    add(new THREE.BoxGeometry(0.12, 0.12, 0.54), steel, [0, 0.12, 1.68]);
+    add(new THREE.BoxGeometry(0.44, 0.12, 0.12), steel, [0, 0.12, 1.84]);
+  }
+  if (id === 'dice') {
+    const die = add(new THREE.BoxGeometry(0.72, 0.72, 0.72), steel, [0, 0.18, 1.02], [0.18, 0.28, 0.12]);
+    die.name = 'dice-core';
+    for (const [x, y] of [[-0.16, -0.16], [0.16, 0.16], [0.16, -0.16], [-0.16, 0.16], [0, 0], [-0.16, 0], [0.16, 0]] as const) {
+      const pip = add(new THREE.SphereGeometry(0.052, 8, 6), dark, [x, 0.19 + y, 1.39]); pip.name = 'dice-pip';
+    }
+  }
+  if (id === 'electric') {
+    const boltPoints: [number, number, number][] = [
+      [-0.38, 0.12, 0.95], [-0.04, 0.12, 1.22], [-0.25, 0.12, 1.43],
+      [0.16, 0.12, 1.62], [0.02, 0.12, 1.89], [0.42, 0.12, 2.1],
+    ];
+    const bolt = new THREE.Line(new THREE.BufferGeometry().setFromPoints(boltPoints.map(point => new THREE.Vector3(...point))),
+      new THREE.LineBasicMaterial({ color: '#fff6ae', linewidth: 3 }));
+    bolt.name = 'electric-bolt'; group.add(bolt);
+    for (const side of [-1, 1]) add(new THREE.SphereGeometry(0.12, 10, 8), accent, [side * 0.56, 0.15, 0.92]);
+  }
+  if (id === 'hook') {
+    addCylinderBetween(group, new THREE.Vector3(-0.08, 0.14, 0.84), new THREE.Vector3(0.18, 0.14, 1.5), 0.09, 0.11, wood, 10);
+    const hookCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0.18, 0.14, 1.5), new THREE.Vector3(0.42, 0.14, 1.75),
+      new THREE.Vector3(0.75, 0.14, 1.68), new THREE.Vector3(0.83, 0.14, 1.34),
+      new THREE.Vector3(0.58, 0.14, 1.18), new THREE.Vector3(0.43, 0.14, 1.36),
+    ]);
+    add(new THREE.TubeGeometry(hookCurve, 18, 0.095, 8, false), steel, [0, 0, 0]);
+  }
+  if (id === 'ice-cone') {
+    add(new THREE.CylinderGeometry(0.18, 0.44, 0.58, 8), dark, [0, 0.12, 0.88], [Math.PI / 2, 0, 0]);
+    const cone = forward(new THREE.ConeGeometry(0.38, 0.92, 7), accent, [0, 0.12, 1.4]);
+    cone.name = 'ice-cone-head';
+    for (const side of [-1, 1]) {
+      const shard = add(new THREE.OctahedronGeometry(0.23), steel, [side * 0.48, 0.16, 0.74], [0.2, side * 0.2, 0.5]);
+      shard.scale.set(0.65, 0.8, 1.5);
+    }
+  }
+  if (id === 'reforge') {
+    const companion = new THREE.Group(); companion.name = 'reforge-companion'; group.add(companion);
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.34, 18, 14), accent); orb.castShadow = true; companion.add(orb);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.045, 7, 24), steel);
+    ring.rotation.x = Math.PI / 2; companion.add(ring);
+    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.56, 5), steel);
+    spike.rotation.x = Math.PI / 2; spike.position.z = 0.34; companion.add(spike);
+  }
   if (id === 'axe') {
     const start = new THREE.Vector3(0.19, 0.14, 0.98);
     const end = new THREE.Vector3(0.56, 0.14, 1.86);
@@ -344,6 +409,42 @@ function makeWebVisual() {
   return group;
 }
 
+function makeDiceVisual(): DiceVisual {
+  const group = new THREE.Group();
+  const cube = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.66, 0.66), new THREE.MeshStandardMaterial({ color: '#f0eee5', roughness: 0.28 }));
+  cube.position.y = 0.34; cube.castShadow = true; group.add(cube);
+  const positions: [number, number][] = [[-0.16, -0.16], [0.16, 0.16], [0.16, -0.16], [-0.16, 0.16], [0, 0], [-0.16, 0], [0.16, 0]];
+  const pips = positions.map(([x, z]) => {
+    const pip = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), new THREE.MeshBasicMaterial({ color: '#26302a' }));
+    pip.position.set(x, 0.68, z); pip.visible = false; group.add(pip); return pip;
+  });
+  group.visible = false;
+  return { group, pips };
+}
+
+function makeIceBombVisual() {
+  const group = new THREE.Group();
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 12), new THREE.MeshStandardMaterial({ color: '#9de7fa', roughness: 0.22, metalness: 0.28 }));
+  orb.position.y = 0.34; orb.castShadow = true; group.add(orb);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.04, 7, 24), new THREE.MeshBasicMaterial({ color: '#e9fbff' }));
+  ring.rotation.x = Math.PI / 2; ring.position.y = 0.12; group.add(ring);
+  group.visible = false;
+  return group;
+}
+
+function makeHookProjectileVisual() {
+  const group = new THREE.Group();
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.075, 0.45, 7), new THREE.MeshStandardMaterial({ color: '#8d6948', roughness: 0.74 }));
+  shaft.rotation.x = Math.PI / 2; shaft.position.z = 0.1; group.add(shaft);
+  const curve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0, 0.25), new THREE.Vector3(0.18, 0, 0.43), new THREE.Vector3(0.37, 0, 0.38),
+    new THREE.Vector3(0.41, 0, 0.2), new THREE.Vector3(0.28, 0, 0.12), new THREE.Vector3(0.18, 0, 0.23),
+  ]);
+  group.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 14, 0.065, 7, false), new THREE.MeshStandardMaterial({ color: '#d7e0e5', metalness: 0.84, roughness: 0.22 })));
+  group.visible = false;
+  return group;
+}
+
 export class Arena {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
@@ -365,8 +466,13 @@ export class Arena {
   private chargeCrystals: THREE.Mesh[] = [];
   private beamStrips: EnergyStrip[] = [];
   private laserStrips: EnergyStrip[] = [];
+  private hookTetherStrips: EnergyStrip[] = [];
   private webVisuals: THREE.Group[] = [];
   private spikeVisuals: THREE.Group[] = [];
+  private diceVisuals: DiceVisual[] = [];
+  private iceBombVisuals: THREE.Group[] = [];
+  private chessRouteVisuals: (THREE.Line | null)[] = [];
+  private chessRouteKeys: string[] = [];
   private fxClock = 0;
   private axeAngles = [0, 0, 0, 0];
   private axeAngleReady = [false, false, false, false];
@@ -425,7 +531,8 @@ export class Arena {
     this.aimArrow.visible = false;
     this.scene.add(this.aimArrow);
 
-    Array.from({length:4},(_,index)=>BASIC_BALLS[index%2]).forEach((def, index) => {
+    for (let index = 0; index < 4; index++) {
+      const def = BASIC_BALLS[index % 2];
       const group = new THREE.Group();
       const orb = new THREE.Mesh(new THREE.SphereGeometry(def.radius, 40, 28),
         new THREE.MeshPhysicalMaterial({ color: def.color, metalness: 0.45, roughness: 0.22,
@@ -447,13 +554,16 @@ export class Arena {
         mesh.visible = false; this.scene.add(mesh); trail.push(mesh);
       }
       this.trails.push(trail);
-    });
+    }
     for (let i = 0; i < 4; i++) {
       const beam = makeEnergyStrip(); beam.group.visible = false; this.scene.add(beam.group); this.beamStrips.push(beam);
     }
     for (let i = 0; i < 16; i++) {
       const laser = makeEnergyStrip(); laser.group.visible = false; this.scene.add(laser.group); this.laserStrips.push(laser);
       const web = makeWebVisual(); web.visible = false; this.scene.add(web); this.webVisuals.push(web);
+    }
+    for (let i = 0; i < 4; i++) {
+      const tether = makeEnergyStrip(); tether.group.visible = false; this.scene.add(tether.group); this.hookTetherStrips.push(tether);
     }
     for (let i = 0; i < 32; i++) {
       const spike = new THREE.Group(); spike.visible = false;
@@ -465,9 +575,39 @@ export class Arena {
       base.position.y = 0.06; spike.add(base);
       this.scene.add(spike); this.spikeVisuals.push(spike);
     }
+    for (let i = 0; i < 20; i++) {
+      const die = makeDiceVisual(); this.scene.add(die.group); this.diceVisuals.push(die);
+    }
+    for (let i = 0; i < 8; i++) {
+      const bomb = makeIceBombVisual(); this.scene.add(bomb); this.iceBombVisuals.push(bomb);
+    }
     this.observer = new ResizeObserver(() => this.resize());
     this.observer.observe(container);
     this.resize();
+  }
+
+  private ensureBallSlots(count: number) {
+    while (this.balls.length < count) {
+      const index = this.balls.length, def = BASIC_BALLS[index % 2];
+      const group = new THREE.Group();
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(def.radius, 40, 28),
+        new THREE.MeshPhysicalMaterial({ color: def.color, metalness: 0.45, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.15 }));
+      orb.castShadow = true; orb.receiveShadow = true; group.add(orb);
+      const satellite = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), new THREE.MeshBasicMaterial({ color: 0xff9dd5 }));
+      satellite.visible = false; group.add(satellite);
+      const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.23, 0),
+        new THREE.MeshBasicMaterial({ color: 0x48eaff, transparent: true, opacity: 0.95 }));
+      crystal.position.set(0, 0.48, 1.24); crystal.visible = false; group.add(crystal);
+      this.chargeCrystals.push(crystal); this.abilityGroups.push(null); this.abilityIds.push(null);
+      this.balls.push(group); this.scene.add(group);
+      const trail: THREE.Mesh[] = [];
+      for (let i = 0; i < 12; i++) {
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6),
+          new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.22 * (1 - i / 12) }));
+        mesh.visible = false; this.scene.add(mesh); trail.push(mesh);
+      }
+      this.trails.push(trail);
+    }
   }
 
   private resize() {
@@ -491,6 +631,10 @@ export class Arena {
 
   reset(w: World) {
     this.previous = w.balls.map(b => ({ x: b.x, y: b.y }));
+    this.chessRouteVisuals.forEach(mesh => { if (mesh) { this.scene.remove(mesh); mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); } });
+    this.chessRouteVisuals = []; this.chessRouteKeys = [];
+    this.diceVisuals.forEach(die => { die.group.visible = false; });
+    this.iceBombVisuals.forEach(bomb => { bomb.visible = false; });
     this.trails.flat().forEach(t => { t.visible = false; });
     this.flashes.forEach(f => { this.scene.remove(f.mesh); f.mesh.geometry.dispose(); (f.mesh.material as THREE.Material).dispose(); });
     this.flashes = [];
@@ -548,6 +692,7 @@ export class Arena {
   }
 
   setBallAbility(index: number, abilityId: string | null) {
+    this.ensureBallSlots(index + 1);
     const group = this.balls[index];
     if (!group || this.abilityIds[index] === abilityId) return;
     const previous = this.abilityGroups[index];
@@ -604,6 +749,21 @@ export class Arena {
     this.damageBubbles.push({ sprite, life: 0.9, rise: this.reducedMotion.matches ? 0 : 1.1 });
   }
 
+  private updateChessRoute(index: number, ball: World['balls'][number]) {
+    const active = (ball.chessPhase === 'aim' || ball.chessPhase === 'attack') && ball.chessPath.length > 0;
+    const key = active ? `${ball.chessPhase}:${ball.chessPattern}:${ball.chessPath.map(path => `${path.x1},${path.y1},${path.x2},${path.y2}`).join(';')}` : '';
+    if (this.chessRouteKeys[index] === key) return;
+    const previous = this.chessRouteVisuals[index];
+    if (previous) { this.scene.remove(previous); previous.geometry.dispose(); (previous.material as THREE.Material).dispose(); }
+    this.chessRouteVisuals[index] = null; this.chessRouteKeys[index] = key;
+    if (!active) return;
+    const positions = ball.chessPath.flatMap(path => [path.x1, 0.11, path.y1, path.x2, 0.11, path.y2]);
+    const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    const material = new THREE.LineBasicMaterial({ color: ball.chessPhase === 'aim' ? '#e2d4af' : '#fff4cf', transparent: true, opacity: ball.chessPhase === 'aim' ? 0.82 : 0.96 });
+    const line = new THREE.LineSegments(geometry, material);
+    this.scene.add(line); this.chessRouteVisuals[index] = line;
+  }
+
   afterStep(w: World) {
     for (const event of w.events.filter(e => e.type === 'damage' && e.amount).slice(0, this.lowEffects ? 2 : 5))
       this.showDamageBubble(event.x, event.y, event.amount!);
@@ -638,6 +798,7 @@ export class Arena {
   }
 
   render(w: World, alpha: number, delta: number, moving: boolean) {
+    this.ensureBallSlots(w.balls.length);
     if (moving) this.fxClock += delta;
     const effectDelta = moving || w.phase === 'finished' ? delta : 0;
     w.balls.forEach((b, i) => {
@@ -672,6 +833,7 @@ export class Arena {
           const spinRate: Record<string, number> = {
             amber: 0.7, jade: 0.52, violet: 0.9, gold: 1.35, cyan: 0.72, pink: 0.9, laser: 0.85,
             blade: 0.8, charge: 0.16, glass: 0.22, 'poison-spike': 0.24, thief: 0.45,
+            vampire: 0.7, cell: 0.38, chess: 0.12, dice: 0.32, electric: 1.2, hook: 0.26, 'ice-cone': 0.55,
           };
           if (b.abilityId !== 'axe' && spinRate[b.abilityId ?? '']) signature.rotation.y = b.abilityId === 'blade'
             ? -b.bladeAngle : this.fxClock * spinRate[b.abilityId ?? ''];
@@ -685,6 +847,19 @@ export class Arena {
                 rest.y, rest.z + Math.cos(this.fxClock * 10 + phase) * 0.2);
             });
           }
+          const vampireOrbit = signature.getObjectByName('vampire-orbit');
+          if (vampireOrbit) vampireOrbit.rotation.y = this.reducedMotion.matches ? 0 : this.fxClock * 1.3;
+          const refCompanion = signature.getObjectByName('reforge-companion');
+          if (refCompanion) {
+            refCompanion.visible = b.reforgeActive;
+            const angle = this.reducedMotion.matches ? 0 : b.reforgeAngle;
+            const radius = 2 + Math.cos(angle) * 0.45;
+            refCompanion.position.set(Math.cos(angle) * radius, 0.3, Math.sin(angle) * radius);
+            refCompanion.rotation.y = -angle;
+            refCompanion.scale.setScalar(0.9 + Math.min(1, b.reforgeDamage / 11) * 0.2);
+          }
+          const electricBolt = signature.getObjectByName('electric-bolt') as THREE.Line | undefined;
+          if (electricBolt) (electricBolt.material as THREE.LineBasicMaterial).opacity = 0.55 + (this.reducedMotion.matches ? 0 : Math.sin(this.fxClock * 13) * 0.38);
           const rotors = signature.userData.rotors as THREE.Group[] | undefined;
           rotors?.forEach(rotor => { rotor.rotation.y = this.fxClock * 18 + (rotor.userData.phase as number); });
         }
@@ -717,6 +892,7 @@ export class Arena {
         }
         trail[0].position.set(x, 0.14, y); trail[0].visible = b.hp > 0;
       } else trail.forEach(particle => { particle.visible = false; });
+      this.updateChessRoute(i, b);
     });
     this.balls.forEach((group,i)=>{group.visible=i<w.balls.length;this.trails[i].forEach(p=>{if(i>=w.balls.length)p.visible=false;});});
     this.flashes = this.flashes.filter(f => {
@@ -751,22 +927,32 @@ export class Arena {
     });
     while (this.projectiles.length < w.projectiles.length) {
       const orb = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), new THREE.MeshBasicMaterial({ color: 0xff9566 }));
+      const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.26, 0), new THREE.MeshStandardMaterial({ color: '#9de7fa', metalness: 0.42, roughness: 0.22 }));
       const streak = new THREE.Mesh(new THREE.BoxGeometry(1, 0.055, 0.055),
         new THREE.MeshBasicMaterial({ color: 0xff9566, transparent: true, opacity: 0.72 }));
-      this.scene.add(orb, streak); this.projectiles.push({ orb, streak });
+      const hook = makeHookProjectileVisual();
+      this.scene.add(orb, shard, streak, hook); this.projectiles.push({ orb, shard, streak, hook });
     }
-    this.projectiles.forEach(({ orb, streak }, i) => {
+    this.projectiles.forEach(({ orb, shard, streak, hook }, i) => {
       const shot = w.projectiles[i];
-      orb.visible = !!shot; streak.visible = !!shot && !this.lowEffects && !this.reducedMotion.matches;
+      orb.visible = !!shot && shot.kind !== 'hook' && shot.kind !== 'ice';
+      shard.visible = !!shot && shot.kind === 'ice';
+      streak.visible = !!shot && shot.kind !== 'hook' && !this.lowEffects && !this.reducedMotion.matches;
+      hook.visible = !!shot && shot.kind === 'hook';
       if (shot) {
         const radius = shot.radius ?? 0.22;
         orb.position.set(shot.x, 0.35, shot.y); orb.scale.setScalar(radius);
         (orb.material as THREE.MeshBasicMaterial).color.set(shot.color ?? '#ff9566');
+        shard.position.set(shot.x, 0.35, shot.y); shard.scale.setScalar(radius * 1.65);
+        (shard.material as THREE.MeshStandardMaterial).color.set(shot.color ?? '#9de7fa');
+        shard.rotation.y = this.reducedMotion.matches ? 0 : this.fxClock * 5;
         const speed = Math.hypot(shot.vx, shot.vy) || 1;
         streak.position.set(shot.x - shot.vx / speed * 0.34, 0.35, shot.y - shot.vy / speed * 0.34);
         streak.rotation.y = -Math.atan2(shot.vy, shot.vx);
         streak.scale.set(Math.max(0.55, Math.min(1.25, speed * 0.045)), 1, 1);
         (streak.material as THREE.MeshBasicMaterial).color.set(shot.color ?? '#ff9566');
+        hook.position.set(shot.x, 0.34, shot.y);
+        hook.rotation.y = Math.PI / 2 - Math.atan2(shot.vy, shot.vx);
       }
     });
 
@@ -780,16 +966,30 @@ export class Arena {
       strip.glow.visible = !this.lowEffects;
       strip.marker.visible = !this.lowEffects && !this.reducedMotion.matches;
     };
+    this.hookTetherStrips.forEach((strip, i) => {
+      const tether = w.hookTethers[i];
+      const owner = tether && w.balls[tether.owner], target = tether && w.balls[tether.target];
+      const active = !!owner && !!target && owner.hp > 0 && target.hp > 0;
+      strip.group.visible = active;
+      if (!active || !owner || !target) return;
+      const dx = target.x - owner.x, dz = target.y - owner.y, length = Math.hypot(dx, dz);
+      strip.group.position.set((owner.x + target.x) / 2, 0.42, (owner.y + target.y) / 2);
+      strip.group.rotation.y = -Math.atan2(dz, dx);
+      strip.group.scale.set(length, 1, 1);
+      updateStrip(strip, '#c49a72', 0.92);
+    });
     this.laserStrips.forEach((strip, i) => {
       const laser = w.lasers[i];
       strip.group.visible = !!laser;
       if (!laser) return;
-      const fade = Math.min(1, laser.ttl / 60);
-      strip.group.position.set(laser.axis === 'x' ? 0 : laser.at, 0.16, laser.axis === 'x' ? laser.at : 0);
+      const warning = w.tick < laser.warningUntil;
+      const fade = warning ? 0.5 + (this.reducedMotion.matches ? 0 : Math.sin(this.fxClock * 16) * 0.24) : Math.min(1, laser.ttl / 45);
+      strip.group.position.set(laser.axis === 'x' ? (laser.start + laser.end) / 2 : laser.at, 0.16,
+        laser.axis === 'x' ? laser.at : (laser.start + laser.end) / 2);
       strip.group.rotation.y = laser.axis === 'x' ? 0 : Math.PI / 2;
-      strip.group.scale.set(20, 1, 1);
+      strip.group.scale.set(Math.abs(laser.end - laser.start), 1, 1);
       strip.marker.position.x = ((this.fxClock * 0.72 + i * 0.23) % 1 - 0.5) * 0.9;
-      updateStrip(strip, laser.color, 0.9 * fade);
+      updateStrip(strip, warning ? '#f7d7ff' : laser.color, 0.9 * fade);
     });
     this.webVisuals.forEach((webGroup, i) => {
       const web = w.webs[i];
@@ -829,6 +1029,26 @@ export class Arena {
       material.color.set(trap.color);
       material.emissive.set(trap.color);
       material.emissiveIntensity = 0.12;
+    });
+    const dicePatterns = [[], [4], [0, 1], [0, 4, 1], [0, 2, 3, 1], [0, 2, 4, 3, 1], [0, 2, 5, 6, 3, 1]];
+    this.diceVisuals.forEach((die, index) => {
+      const trap = w.diceTraps[index]; die.group.visible = !!trap;
+      if (!trap) return;
+      die.group.position.set(trap.x, 0.03, trap.y);
+      die.group.rotation.y = this.reducedMotion.matches ? 0 : this.fxClock * 0.42;
+      const shown = new Set(dicePatterns[trap.value] ?? dicePatterns[1]);
+      die.pips.forEach((pip, pipIndex) => { pip.visible = shown.has(pipIndex); });
+    });
+    this.iceBombVisuals.forEach((bombVisual, index) => {
+      const bomb = w.iceBombs[index]; bombVisual.visible = !!bomb;
+      if (!bomb) return;
+      const remaining = Math.max(0, bomb.detonateAt - w.tick) / 90;
+      bombVisual.position.set(bomb.x, 0, bomb.y);
+      const pulse = this.reducedMotion.matches ? 1 : 0.92 + Math.sin(this.fxClock * (8 - remaining * 2)) * 0.08;
+      bombVisual.scale.setScalar(pulse);
+      const orb = bombVisual.children[0] as THREE.Mesh;
+      const material = orb.material as THREE.MeshStandardMaterial;
+      material.color.set(bomb.color); material.emissive.set(bomb.color); material.emissiveIntensity = 0.15 + (1 - remaining / 1.5) * 0.35;
     });
     this.renderer.render(this.scene, this.camera);
   }

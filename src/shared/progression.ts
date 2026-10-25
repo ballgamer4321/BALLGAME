@@ -9,6 +9,11 @@ export const COSMETICS = [
 export type CosmeticId = typeof COSMETICS[number]['id'];
 export type BallId = typeof MATCH_BALLS[number]['id'];
 export const STARTER_BALL_IDS: readonly BallId[] = ['jade', 'orange', 'pink'];
+/** Katalog posiadany przez starsze profile, zanim nowe kulki trafiły do skrzynki. */
+export const LEGACY_OWNED_BALL_IDS: readonly BallId[] = [
+  'jade', 'steel', 'cyan', 'orange', 'pink', 'laser', 'cannon', 'spider', 'axe',
+  'blade', 'burst', 'charge', 'glass', 'machine-gun', 'poison-spike', 'thief',
+];
 
 export const BALL_SHOP = MATCH_BALLS.map(ball => ({
   id: ball.id, name: ball.name, color: ball.color, ability: ball.ability,
@@ -61,7 +66,7 @@ export function normalizeProgress(value: unknown, now = Date.now()): ProgressRec
   const storedBalls = Array.isArray(raw.ownedBalls)
     ? raw.ownedBalls.filter((id): id is BallId => typeof id === 'string' && validBallIds.has(id))
     : typeof raw.createdAt === 'number' && raw.createdAt > 0
-      ? MATCH_BALLS.map(ball => ball.id)
+      ? LEGACY_OWNED_BALL_IDS
       : [...STARTER_BALL_IDS];
   const ownedBalls = [...new Set<BallId>([...STARTER_BALL_IDS, ...storedBalls])];
   const equippedCosmetic = typeof raw.equippedCosmetic === 'string' && ownedCosmetics.includes(raw.equippedCosmetic as CosmeticId)

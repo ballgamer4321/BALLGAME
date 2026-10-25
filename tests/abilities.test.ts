@@ -9,10 +9,12 @@ const advance = (world: ReturnType<typeof duel>, count: number) => {
 
 describe('available ball abilities', () => {
   it('all definitions describe a trigger and a different power', () => {
-    expect(MATCH_BALLS).toHaveLength(16);
-    expect(new Set(MATCH_BALLS.map(ball => ball.ability)).size).toBe(16);
+    expect(MATCH_BALLS).toHaveLength(24);
+    expect(new Set(MATCH_BALLS.map(ball => ball.ability)).size).toBe(24);
     expect(MATCH_BALLS.every(ball => ball.trigger && ball.ability && ball.weakness)).toBe(true);
     expect(['blade', 'axe', 'burst', 'charge', 'glass', 'machine-gun', 'poison-spike', 'spider', 'thief']
+      .every(id => MATCH_BALLS.some(ball => ball.id === id))).toBe(true);
+    expect(['vampire', 'cell', 'chess', 'dice', 'electric', 'hook', 'ice-cone', 'laser', 'reforge']
       .every(id => MATCH_BALLS.some(ball => ball.id === id))).toBe(true);
     expect(MATCH_BALLS.some(ball => ['beam', 'violet', 'amber', 'machine', 'gold'].includes(ball.id))).toBe(false);
   });
@@ -110,17 +112,19 @@ describe('available ball abilities', () => {
     expect(a.echoUntil).toBeLessThanOrEqual(world.tick);
   });
 
-  it('Laser leaves a damaging barrier that expires', () => {
+  it('Laser telegraphs, leaves a finite damaging barrier, then expires', () => {
     const world = duel('laser', 'jade');
     const [a, b] = world.balls;
     a.x = RULES.width / 2 - a.radius - 0.01; a.y = 0; a.vx = 8; a.vy = 0;
-    b.x = 5.5; b.y = 0; b.vx = b.vy = 0;
+    b.x = 2.5; b.y = 0; b.vx = b.vy = 0;
     stepWorld(world);
     expect(world.lasers).toHaveLength(1);
     expect(world.lasers[0].axis).toBe('x');
-    expect(b.hp).toBe(b.maxHp - 4);
-    a.x = -5; b.x = 5.5; a.vx = a.vy = b.vx = b.vy = 0;
-    advance(world, 480);
+    expect(b.hp).toBe(b.maxHp);
+    advance(world, 23);
+    expect(b.hp).toBe(b.maxHp - 6);
+    a.x = -5; b.x = 2.5; a.vx = a.vy = b.vx = b.vy = 0;
+    advance(world, 240);
     expect(world.lasers).toHaveLength(0);
   });
 
@@ -196,7 +200,7 @@ describe('available ball abilities', () => {
     stepWorld(world);
     expect(target.hp).toBe(target.maxHp - 6);
     expect(blade.bladeCount).toBe(1);
-    advance(world, 239);
+    advance(world, 240);
     expect(blade.bladeCount).toBe(2);
   });
 
@@ -316,13 +320,156 @@ describe('available ball abilities', () => {
     expect(thief.abilityReadyAt - world.tick).toBeLessThanOrEqual(24);
   });
 
+  it('Wampir przyczepia się na trzy impulsy i leczy tylko za zabrane HP', () => {
+    const world = duel('vampire', 'laser');
+    const [vampire, target] = world.balls;
+    vampire.hp = 80;
+    vampire.x = -1.25; target.x = 1.25; vampire.y = target.y = 0;
+    vampire.vx = target.vx = vampire.vy = target.vy = 0;
+    stepWorld(world);
+    expect(vampire.vampireTargetId).toBe(target.id);
+    expect(target.hp).toBe(target.maxHp - 3);
+    expect(vampire.hp).toBe(83);
+    advance(world, 48);
+    expect(target.hp).toBe(target.maxHp - 9);
+    expect(vampire.hp).toBe(89);
+    advance(world, 24);
+    expect(vampire.vampireTargetId).toBeNull();
+  });
+
+  it('Komórka rośnie pięć razy najwyżej i po śmierci zostawia dwie mniejsze kulki', () => {
+    const world = duel('cell', 'laser');
+    const [cell] = world.balls;
+    cell.x = -6; cell.y = 0; cell.vx = cell.vy = 0;
+    world.balls[1].x = 6; world.balls[1].y = 0; world.balls[1].vx = world.balls[1].vy = 0;
+    advance(world, 300);
+    expect(cell.cellGrowthLevel).toBe(1);
+    expect(cell.radius).toBeCloseTo(1.3 * 1.08);
+    advance(world, 1500);
+    expect(cell.cellGrowthLevel).toBe(5);
+    cell.hp = 0;
+    stepWorld(world);
+    const children = world.balls.filter(ball => ball.form === 'cell-minion');
+    expect(children).toHaveLength(2);
+    expect(children.every(ball => ball.team === cell.team && ball.maxHp === 25 && ball.hp <= 25 && ball.hp >= 24 && ball.damage === 3)).toBe(true);
+  });
+
+  it('Szachy zapowiada ruch figury przed trafieniem z wybranej trasy', () => {
+    const world = duel('chess', 'laser');
+    const [chess, target] = world.balls;
+    chess.x = -6; chess.y = 0; chess.vx = chess.vy = 0;
+    target.x = 6; target.y = 0; target.vx = target.vy = 0;
+    advance(world, 327);
+    expect(chess.chessPhase).toBe('aim');
+    expect(chess.chessPattern).toMatch(/^(rook|bishop|knight)$/);
+    expect(chess.chessPath.length).toBeGreaterThan(0);
+    const last = chess.chessPath[chess.chessPath.length - 1];
+    target.x = last.x2; target.y = last.y2;
+    target.vx = target.vy = 0;
+    advance(world, 36);
+    expect(chess.chessPhase).toBe('attack');
+    expect(target.hp).toBe(target.maxHp - 18);
+  });
+
+  it('Kostka stawia czytelny trap, który rani i ma osobny cooldown na cel', () => {
+    const world = duel('dice', 'laser');
+    const [dice, target] = world.balls;
+    dice.x = -6; dice.y = 0; dice.vx = dice.vy = 0;
+    target.x = 6; target.y = 0; target.vx = target.vy = 0;
+    advance(world, 120);
+    expect(world.diceTraps).toHaveLength(1);
+    expect(world.diceTraps[0].value).toBeGreaterThanOrEqual(1);
+    expect(world.diceTraps[0].value).toBeLessThanOrEqual(6);
+    const trap = world.diceTraps[0], slot = world.balls.indexOf(target), amount = trap.value;
+    trap.x = 0; trap.y = 0; target.x = 1.4; target.y = 0;
+    const hp = target.hp;
+    stepWorld(world);
+    expect(target.hp).toBe(hp - amount);
+    expect(trap.nextHitAt[String(slot)]).toBeGreaterThan(world.tick);
+  });
+
+  it('Elektryczna zadaje 8 obrażeń i uruchamia odporność po ogłuszeniu', () => {
+    const world = duel('electric', 'laser');
+    const [electric, target] = world.balls;
+    electric.x = -1.25; target.x = 1.25; electric.y = target.y = 0;
+    electric.vx = target.vx = electric.vy = target.vy = 0;
+    const hp = target.hp;
+    stepWorld(world);
+    expect(target.hp).toBe(hp - 8);
+    expect(target.stunnedUntil).toBeGreaterThan(world.tick);
+    expect(target.controlImmuneUntil).toBeGreaterThan(target.stunnedUntil);
+  });
+
+  it('Hak trafia pociskiem, obraca cel i wyrzuca go z dodatkowymi obrażeniami', () => {
+    const world = duel('hook', 'laser');
+    const [hook, target] = world.balls;
+    hook.x = -7; hook.y = target.y = 0; hook.vx = hook.vy = target.vx = target.vy = 0; target.x = 0;
+    stepWorld(world);
+    advance(world, 25);
+    expect(world.hookTethers).toHaveLength(1);
+    expect(target.hp).toBe(target.maxHp - 5);
+    const beforeRelease = target.hp;
+    advance(world, 48);
+    expect(target.hp).toBe(beforeRelease - 7);
+    expect(Math.hypot(target.vx - hook.vx, target.vy - hook.vy)).toBeGreaterThan(10);
+  });
+
+  it('Lodowy Rozprysk detonuje i ogranicza obrażenia jednej eksplozji do trzech odłamków', () => {
+    const world = duel('ice-cone', 'laser');
+    const [ice, target] = world.balls;
+    ice.x = -6; ice.y = target.y = 0; ice.vx = ice.vy = target.vx = target.vy = 0; target.x = 6;
+    stepWorld(world);
+    expect(world.iceBombs).toHaveLength(1);
+    advance(world, 90);
+    expect(world.iceBombs).toHaveLength(0);
+    expect(world.projectiles.filter(shot => shot.kind === 'ice')).toHaveLength(8);
+    target.x = -2; target.y = 0;
+    const hp = target.hp;
+    advance(world, 24);
+    expect(hp - target.hp).toBeGreaterThan(0);
+    expect(hp - target.hp).toBeLessThanOrEqual(12);
+    expect(target.slowEffects.some(effect => effect.source.startsWith('ice:'))).toBe(true);
+  });
+
+  it('Laser ostrzega przez 0,4 s, trafia ograniczoną linią i zachowuje cooldown', () => {
+    const world = duel('laser', 'jade');
+    const [laser, target] = world.balls;
+    laser.x = RULES.width / 2 - laser.radius - 0.01; laser.y = 0; laser.vx = 8; laser.vy = 0;
+    target.x = 2.5; target.y = 0; target.vx = target.vy = 0;
+    stepWorld(world);
+    expect(world.lasers).toHaveLength(1);
+    expect(Math.abs(world.lasers[0].end - world.lasers[0].start)).toBe(12);
+    laser.x = -5; laser.vx = laser.vy = 0;
+    const hp = target.hp;
+    advance(world, 22);
+    expect(target.hp).toBe(hp);
+    stepWorld(world);
+    expect(target.hp).toBe(hp - 6);
+    advance(world, 240);
+    expect(world.lasers).toHaveLength(0);
+  });
+
+  it('Reforge przyzywa pomocnika po odbiciu, a jego orbitujący atak rośnie', () => {
+    const world = duel('reforge', 'laser');
+    const [reforge, target] = world.balls;
+    reforge.x = RULES.width / 2 - reforge.radius - 0.01; reforge.y = 0; reforge.vx = 8; reforge.vy = 0;
+    target.x = 6.2; target.y = 0; target.vx = target.vy = 0;
+    stepWorld(world);
+    expect(reforge.reforgeActive).toBe(true);
+    expect(reforge.reforgeDamage).toBe(3);
+    const hp = target.hp;
+    advance(world, 90);
+    expect(reforge.reforgeDamage).toBe(4);
+    expect(target.hp).toBeLessThan(hp);
+  });
+
   it('every pair finishes within the limit without invalid physics', () => {
     for (const first of MATCH_BALLS) for (const second of MATCH_BALLS) {
       const world = createWorld(17, [first.id, second.id]);
       while (world.phase === 'running') stepWorld(world);
       expect(world.tick).toBeLessThanOrEqual(RULES.maxTicks);
       expect(world.hits).toBeGreaterThan(0);
-      expect(world.collisionLimitHits).toBe(0);
+      expect(world.collisionLimitHits, `${first.id} vs ${second.id}`).toBe(0);
       expect(world.balls.every(ball => Number.isFinite(ball.hp) && Number.isFinite(ball.x) && Number.isFinite(ball.y))).toBe(true);
     }
   });

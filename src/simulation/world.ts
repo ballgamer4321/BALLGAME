@@ -3,6 +3,7 @@ import { seededRandom } from '../shared/random.js';
 
 export interface Ball {
   id: string; x: number; y: number; vx: number; vy: number;
+  form: 'standard' | 'cell-minion';
   team: 0 | 1;
   radius: number; hp: number; maxHp: number; damage: number; normalSpeed: number;
   abilityId: string | null; shield: number; shieldUntil: number;
@@ -17,19 +18,30 @@ export interface Ball {
   glassNextBurstAt: number; contactNextHitAt: Record<string, number>;
   abilityReadyAt: number; beamChargeUntil: number; beamUntil: number; beamNextDamageAt: number;
   axeAngle: number; axeNextHitAt: number[];
+  vampireTargetId: string | null; vampireUntil: number; vampireNextPulseAt: number; vampirePulsesLeft: number;
+  cellGrowthLevel: number; cellNextGrowAt: number; cellSplitTriggered: boolean;
+  chessPhase: 'idle' | 'travel' | 'aim' | 'attack'; chessPhaseUntil: number;
+  chessStartX: number; chessStartY: number; chessSavedVx: number; chessSavedVy: number;
+  chessPattern: 'rook' | 'bishop' | 'knight' | null; chessPath: ChessPathSegment[];
+  diceNextDropAt: number; iceNextBombAt: number;
+  reforgeActive: boolean; reforgeDamage: number; reforgeAngle: number; reforgeTouching: boolean; reforgeNextHitAt: number[];
 }
+export interface ChessPathSegment { x1: number; y1: number; x2: number; y2: number; }
 export interface BattleEvent { type: 'wall' | 'hit' | 'power' | 'beam' | 'shot' | 'damage'; x: number; y: number; color?: string; radius?: number; axis?: 'x' | 'y'; amount?: number; }
-export interface Projectile { x: number; y: number; vx: number; vy: number; owner: number; ttl: number; damage?: number; radius?: number; color?: string; burstId?: number; }
-export interface LaserLine { axis: 'x' | 'y'; at: number; owner: number; color: string; ttl: number; nextHitAt: Record<string, number>; }
+export interface Projectile { x: number; y: number; vx: number; vy: number; owner: number; ttl: number; damage?: number; radius?: number; color?: string; burstId?: number; kind?: 'hook' | 'ice'; slowFactor?: number; slowDuration?: number; }
+export interface LaserLine { axis: 'x' | 'y'; at: number; start: number; end: number; owner: number; color: string; ttl: number; warningUntil: number; nextHitAt: Record<string, number>; }
 export interface WebTrap { x: number; y: number; owner: number; radius: number; color: string; ttl: number; createdAt: number; hitSlots: number[]; nextDamageAt: Record<string, number>; }
 export interface SpikeTrap { x: number; y: number; owner: number; radius: number; color: string; ttl: number; }
+export interface DiceTrap { x: number; y: number; owner: number; id: number; value: number; ttl: number; nextHitAt: Record<string, number>; }
+export interface IceBomb { x: number; y: number; owner: number; id: number; detonateAt: number; color: string; }
+export interface HookTether { owner: number; target: number; expiresAt: number; angle: number; radius: number; }
 export interface World {
   seed: number; tick: number; phase: 'running' | 'finished';
   balls: Ball[]; contacts: Set<string>; events: BattleEvent[];
   winner: string | null; reason: 'knockout' | 'timeout' | null;
   hits: number; collisionLimitHits: number;
   projectiles: Projectile[];
-  lasers: LaserLine[]; webs: WebTrap[]; spikes: SpikeTrap[];
+  lasers: LaserLine[]; webs: WebTrap[]; spikes: SpikeTrap[]; diceTraps: DiceTrap[]; iceBombs: IceBomb[]; hookTethers: HookTether[]; nextHazardId: number;
   shardHitCounts: Record<string, Record<string, number>>; nextShardBurstId: number;
 }
 
@@ -56,11 +68,17 @@ export function createWorld(seed = 1, picks?: string[], angles?: number[]): Worl
       machineAmmo: 15, machineReloadUntil: 0, machineNextShotAt: 0,
       bladeCount: 1, bladeNextGrowAt: ticks(4), bladeAngle: 0, bladeNextHitAt: Array(defs.length).fill(0),
       glassNextBurstAt: 0, contactNextHitAt: {},
-      abilityReadyAt: 0, beamChargeUntil: 0, beamUntil: 0, beamNextDamageAt: 0,
-      axeAngle: 0, axeNextHitAt: Array(defs.length).fill(0) };
+      abilityReadyAt: def.id === 'chess' ? ticks(5) : 0, beamChargeUntil: 0, beamUntil: 0, beamNextDamageAt: 0,
+      axeAngle: 0, axeNextHitAt: Array(defs.length).fill(0), form: 'standard' as const,
+      vampireTargetId: null, vampireUntil: 0, vampireNextPulseAt: 0, vampirePulsesLeft: 0,
+      cellGrowthLevel: 0, cellNextGrowAt: ticks(5), cellSplitTriggered: false,
+      chessPhase: 'idle' as const, chessPhaseUntil: 0, chessStartX: 0, chessStartY: 0, chessSavedVx: 0, chessSavedVy: 0,
+      chessPattern: null, chessPath: [], diceNextDropAt: ticks(2), iceNextBombAt: 0,
+      reforgeActive: false, reforgeDamage: 3, reforgeAngle: 0, reforgeTouching: false, reforgeNextHitAt: Array(defs.length).fill(0) };
   });
   return { seed, tick: 0, phase: 'running', balls, contacts: new Set(),
     events: [], winner: null, reason: null, hits: 0, collisionLimitHits: 0, projectiles: [], lasers: [], webs: [], spikes: [],
+    diceTraps: [], iceBombs: [], hookTethers: [], nextHazardId: 1,
     shardHitCounts: {}, nextShardBurstId: 1 };
 }
 
@@ -71,7 +89,7 @@ const other = (w: World, ball: Ball) => w.balls.filter(candidate => candidate.te
   .sort((a, b) => Math.hypot(a.x-ball.x,a.y-ball.y)-Math.hypot(b.x-ball.x,b.y-ball.y))[0];
 
 function damage(w: World, ball: Ball, amount: number, color?: string) {
-  if (ball.hp <= 0 || amount <= 0) return 0;
+  if (ball.hp <= 0 || ball.chessPhase === 'travel' || amount <= 0) return 0;
   const absorbed = Math.min(ball.shield, amount);
   ball.shield -= absorbed;
   const hpBefore = ball.hp;
@@ -166,10 +184,20 @@ function activateWallPower(w: World, ball: Ball, axis: 'x' | 'y') {
     fireProjectiles(w, ball, enemy, { speed: 15, damage: 7, radius: 0.2, color: '#ff9566', ttl: 1.6 });
     w.events.push({ type: 'shot', x: ball.x, y: ball.y, color: '#ff9566' });
   } else if (kind(ball) === 'laser') {
-    ball.abilityReadyAt = w.tick + ticks(3.3);
-    w.lasers.push({ axis, at: axis === 'x' ? ball.y : ball.x, owner: w.balls.indexOf(ball), color: '#f05cff', ttl: ticks(8), nextHitAt: {} });
-    if (w.lasers.length > 10) w.lasers.shift();
+    ball.abilityReadyAt = w.tick + ticks(1.5);
+    const owner = w.balls.indexOf(ball), side = Math.sign(axis === 'x' ? ball.x : ball.y) || 1;
+    const wall = side * (axis === 'x' ? RULES.width : RULES.height) / 2;
+    const line: LaserLine = { axis, at: axis === 'x' ? ball.y : ball.x, start: wall,
+      end: wall - side * 12, owner, color: '#f05cff', warningUntil: w.tick + ticks(0.4), ttl: ticks(4.4), nextHitAt: {} };
+    const owned = w.lasers.filter(laser => laser.owner === owner);
+    if (owned.length >= 3) w.lasers.splice(w.lasers.indexOf(owned[0]), 1);
+    w.lasers.push(line);
     w.events.push({ type: 'beam', x: ball.x, y: ball.y, color: '#f05cff', axis });
+  } else if (kind(ball) === 'reforge' && !ball.reforgeActive) {
+    ball.reforgeActive = true;
+    ball.reforgeDamage = 3;
+    ball.reforgeTouching = false;
+    w.events.push({ type: 'power', x: ball.x, y: ball.y, color: '#ffb86b', radius: 1.8 });
   } else if (kind(ball) === 'spider') {
     ball.abilityReadyAt = w.tick + ticks(1);
     const owner = w.balls.indexOf(ball);
@@ -198,7 +226,7 @@ function spawnGlassShards(w: World, ball: Ball) {
   w.events.push({ type: 'shot', x: ball.x, y: ball.y, color: '#b7f2ed', radius: 1.4 });
 }
 
-function fireProjectiles(w: World, ball: Ball, enemy: Ball, options: { speed: number; damage: number; radius: number; color: string; ttl: number; spread?: number; count?: number }) {
+function fireProjectiles(w: World, ball: Ball, enemy: Ball, options: { speed: number; damage: number; radius: number; color: string; ttl: number; spread?: number; count?: number; kind?: Projectile['kind']; slowFactor?: number; slowDuration?: number }) {
   const dx = enemy.x - ball.x, dy = enemy.y - ball.y;
   const angle = Math.atan2(dy, dx), count = options.count ?? 1, spread = options.spread ?? 0;
   const owner = w.balls.indexOf(ball);
@@ -207,7 +235,8 @@ function fireProjectiles(w: World, ball: Ball, enemy: Ball, options: { speed: nu
     const heading = angle + offset;
     w.projectiles.push({ x: ball.x, y: ball.y, vx: Math.cos(heading) * options.speed,
       vy: Math.sin(heading) * options.speed, owner, ttl: ticks(options.ttl),
-      damage: options.damage, radius: options.radius, color: options.color });
+      damage: options.damage, radius: options.radius, color: options.color, kind: options.kind,
+      slowFactor: options.slowFactor, slowDuration: options.slowDuration });
   }
 }
 
@@ -227,13 +256,35 @@ function constrain(b: Ball) {
 }
 
 function applyContactAttack(w: World, attacker: Ball, target: Ball, allowKnockoutCounter = false) {
-  if ((!allowKnockoutCounter && attacker.hp <= 0) || target.hp <= 0 || attacker.team === target.team) return;
+  if ((!allowKnockoutCounter && attacker.hp <= 0) || target.hp <= 0 || attacker.team === target.team ||
+      attacker.chessPhase === 'travel' || target.chessPhase === 'travel') return;
+  if (kind(attacker) === 'vampire') {
+    if (!attacker.vampireTargetId && w.tick >= attacker.abilityReadyAt) {
+      attacker.vampireTargetId = target.id;
+      attacker.vampireUntil = w.tick + ticks(1.2);
+      attacker.vampireNextPulseAt = w.tick;
+      attacker.vampirePulsesLeft = 3;
+      attacker.abilityReadyAt = w.tick + ticks(4);
+      w.events.push({ type: 'power', x: attacker.x, y: attacker.y, color: '#b64c71', radius: attacker.radius + 0.7 });
+    }
+    return;
+  }
+  if (kind(attacker) === 'electric') {
+    if (w.tick >= attacker.abilityReadyAt) {
+      attacker.abilityReadyAt = w.tick + ticks(2.5);
+      damage(w, target, 8, '#ffe46c');
+      applyStun(w, target, 0.35, '#ffe46c');
+      w.hits++;
+    }
+    return;
+  }
   const nextAllowed = attacker.contactNextHitAt[target.id] ?? 0;
   if (w.tick < nextAllowed) return;
   const source = kind(attacker);
-  const interval = source === 'charge' ? 0.8 : 0.5;
+  const interval = source === 'charge' || source === 'cell' ? 0.8 : 0.5;
   let amount = attacker.damage;
   if (source === 'charge') amount = Math.min(25, 4 + 3 * Math.floor(Math.max(0, w.tick - attacker.chargeStartedAt) / ticks(1)));
+  if (source === 'cell') amount = 5;
   if (source === 'burst') amount = attacker.dashArmed ? 16 : 0;
   if (amount <= 0) return;
   attacker.contactNextHitAt[target.id] = w.tick + ticks(interval);
@@ -293,12 +344,13 @@ function resolvePair(w: World, a: Ball, b: Ball) {
 type Impact = { time: number; a: Ball; axis?: 'x' | 'y'; b?: Ball };
 
 function advance(w: World, dt: number) {
-  for (const b of w.balls) if (b.hp > 0) { b.x += b.vx * dt; b.y += b.vy * dt; }
+  for (const b of w.balls) if (b.hp > 0 && b.chessPhase !== 'travel') { b.x += b.vx * dt; b.y += b.vy * dt; }
   releaseContacts(w);
 }
 
 function integrate(w: World) {
   let remaining: number = RULES.step;
+  const tethered = new Set(w.hookTethers.map(tether => tether.target));
   for (let count = 0; remaining > EPS; count++) {
     if (count >= RULES.maxImpacts) {
       // Drop remaining displacement rather than tunnel when the safety budget is exhausted.
@@ -325,7 +377,7 @@ function integrate(w: World) {
     for (let i = 0; i < w.balls.length; i++) {
       for (let j = i + 1; j < w.balls.length; j++) {
         const a = w.balls[i], b = w.balls[j];
-        if(a.hp<=0 || b.hp<=0)continue;
+        if(a.hp<=0 || b.hp<=0 || a.chessPhase === 'travel' || b.chessPhase === 'travel' || tethered.has(i) || tethered.has(j))continue;
         const dx = b.x - a.x, dy = b.y - a.y;
         const vx = b.vx - a.vx, vy = b.vy - a.vy;
         const radius = a.radius + b.radius;
@@ -333,7 +385,7 @@ function integrate(w: World) {
         const dot = dx * vx + dy * vy;
         const speedSq = vx * vx + vy * vy;
         if (c <= EPS) {
-          if (c < -EPS || dot < -EPS || !w.contacts.has(pairKey(a, b)))
+          if (dot < -EPS || !w.contacts.has(pairKey(a, b)))
             consider({ time: 0, a, b });
         } else if (dot < 0 && speedSq > EPS) {
           const discriminant = dot * dot - speedSq * c;
@@ -358,8 +410,128 @@ function integrate(w: World) {
   }
 }
 
+function chessAttackPath(pattern: 'rook' | 'bishop' | 'knight', dx: number, dy: number): ChessPathSegment[] {
+  const horizontal = Math.abs(dx) >= Math.abs(dy);
+  const sx = Math.sign(dx) || 1, sy = Math.sign(dy) || 1;
+  if (pattern === 'rook') return horizontal
+    ? [{ x1: 0, y1: 0, x2: sx * (RULES.width / 2), y2: 0 }]
+    : [{ x1: 0, y1: 0, x2: 0, y2: sy * (RULES.height / 2) }];
+  if (pattern === 'bishop') return [{ x1: 0, y1: 0, x2: sx * 9.4, y2: sy * 9.4 }];
+  return [
+    { x1: 0, y1: 0, x2: sx * 3.2, y2: 0 },
+    { x1: sx * 3.2, y1: 0, x2: sx * 3.2, y2: sy * 1.6 },
+  ];
+}
+
+function updateChess(w: World, ball: Ball, owner: number) {
+  if (ball.chessPhase === 'idle') {
+    if (w.tick < ball.abilityReadyAt) return;
+    ball.chessPhase = 'travel';
+    ball.chessPhaseUntil = w.tick + ticks(0.45);
+    ball.chessStartX = ball.x; ball.chessStartY = ball.y;
+    ball.chessSavedVx = ball.vx; ball.chessSavedVy = ball.vy;
+    ball.vx = 0; ball.vy = 0;
+    return;
+  }
+  if (ball.chessPhase === 'travel') {
+    const duration = ticks(0.45);
+    const progress = Math.max(0, Math.min(1, 1 - (ball.chessPhaseUntil - w.tick) / duration));
+    ball.x = ball.chessStartX * (1 - progress);
+    ball.y = ball.chessStartY * (1 - progress);
+    if (w.tick < ball.chessPhaseUntil) return;
+    const target = other(w, ball);
+    if (!target) { ball.chessPhase = 'idle'; ball.vx = ball.chessSavedVx; ball.vy = ball.chessSavedVy; return; }
+    const roll = seededRandom((w.seed + Math.imul(w.tick + 1, 31) + owner * 97) >>> 0)();
+    ball.chessPattern = roll < 1 / 3 ? 'rook' : roll < 2 / 3 ? 'bishop' : 'knight';
+    ball.chessPath = chessAttackPath(ball.chessPattern, target.x - ball.x, target.y - ball.y);
+    ball.chessPhase = 'aim'; ball.chessPhaseUntil = w.tick + ticks(0.6);
+    w.events.push({ type: 'power', x: ball.x, y: ball.y, color: '#e2d4af', radius: 2.4 });
+    return;
+  }
+  if (ball.chessPhase === 'aim') {
+    if (w.tick < ball.chessPhaseUntil) return;
+    for (const target of w.balls) {
+      if (target.hp <= 0 || target.team === ball.team) continue;
+      const hit = ball.chessPath.some(path => distanceToSegment(target.x, target.y, path.x1, path.y1, path.x2, path.y2) <= target.radius + 0.3);
+      if (hit) { damage(w, target, 18, '#e2d4af'); w.hits++; }
+    }
+    ball.chessPhase = 'attack'; ball.chessPhaseUntil = w.tick + ticks(0.25);
+    ball.abilityReadyAt = w.tick + ticks(5);
+    w.events.push({ type: 'hit', x: ball.x, y: ball.y, color: '#e2d4af', radius: 1.1 });
+    return;
+  }
+  if (ball.chessPhase === 'attack' && w.tick >= ball.chessPhaseUntil) {
+    ball.chessPhase = 'idle'; ball.chessPattern = null; ball.chessPath = [];
+    ball.vx = ball.chessSavedVx; ball.vy = ball.chessSavedVy;
+  }
+}
+
+function rollDie(seed: number, tick: number, id: number) {
+  return 1 + Math.floor(seededRandom((seed ^ Math.imul(tick + 1, 0x45d9f3b) ^ Math.imul(id + 1, 0x27d4eb2d)) >>> 0)() * 6);
+}
+
+function updateVampireLeeches(w: World) {
+  for (const vampire of w.balls) {
+    if (vampire.hp <= 0 || !vampire.vampireTargetId) continue;
+    const target = w.balls.find(ball => ball.id === vampire.vampireTargetId);
+    if (!target || target.hp <= 0 || w.tick >= vampire.vampireUntil) {
+      if (target?.hp && target.hp > 0) {
+        const distance = Math.hypot(target.x - vampire.x, target.y - vampire.y) || 1;
+        target.vx += (target.x - vampire.x) / distance * 2.4;
+        target.vy += (target.y - vampire.y) / distance * 2.4;
+      }
+      vampire.vampireTargetId = null; vampire.vampirePulsesLeft = 0;
+      continue;
+    }
+    if (vampire.vampirePulsesLeft > 0 && w.tick >= vampire.vampireNextPulseAt) {
+      const hpLost = damage(w, target, 3, '#b64c71');
+      vampire.hp = Math.min(vampire.maxHp, vampire.hp + hpLost);
+      vampire.vampirePulsesLeft--;
+      vampire.vampireNextPulseAt += ticks(0.4);
+      w.events.push({ type: 'power', x: vampire.x, y: vampire.y, color: '#df7896', radius: vampire.radius + 0.45 });
+    }
+  }
+}
+
+function spawnCellMinions(w: World) {
+  for (const parent of w.balls) {
+    if (parent.abilityId !== 'cell' || parent.hp > 0 || parent.cellSplitTriggered) continue;
+    parent.cellSplitTriggered = true;
+    if (w.balls.length + 2 > 12) continue;
+    const heading = Math.atan2(parent.vy, parent.vx);
+    const health = 15 + parent.cellGrowthLevel * 2;
+    for (const [index, offset] of [-0.7, 0.7].entries()) {
+      const angle = heading + offset;
+      const radius = 0.58, speed = parent.normalSpeed * 1.08;
+      const minion: Ball = {
+        ...parent, id: `${parent.id}:cell-${index}`, x: parent.x + Math.cos(angle) * 0.38,
+        y: parent.y + Math.sin(angle) * 0.38, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+        form: 'cell-minion', radius, hp: health, maxHp: health, damage: 3, normalSpeed: speed,
+        abilityId: null, shield: 0, shieldUntil: 0, poisonStacks: [], poisonTick: 0, poisonedUntil: 0,
+        burnUntil: 0, burnNextDamageAt: 0, slowEffects: [], slowFactor: 1, slowedUntil: 0,
+        stunnedUntil: 0, controlImmuneUntil: 0, stunVx: 0, stunVy: 0, dashUntil: 0, dashArmed: false,
+        vampireTargetId: null, vampireUntil: 0, vampirePulsesLeft: 0, vampireNextPulseAt: 0,
+        chessPhase: 'idle', chessPhaseUntil: 0, chessPath: [], chessPattern: null,
+        chessStartX: 0, chessStartY: 0, chessSavedVx: 0, chessSavedVy: 0,
+        cellGrowthLevel: 0, cellNextGrowAt: 0, cellSplitTriggered: true,
+        contactNextHitAt: {}, abilityReadyAt: 0, glassNextBurstAt: 0,
+        bladeCount: 1, bladeNextGrowAt: 0, bladeAngle: 0, bladeNextHitAt: Array(w.balls.length + 2).fill(0),
+        axeAngle: 0, axeNextHitAt: Array(w.balls.length + 2).fill(0),
+        machineAmmo: 15, machineReloadUntil: 0, machineNextShotAt: 0,
+        burstAimUntil: 0, burstDirection: 0, chargeStartedAt: 0, echoUntil: 0, echoHit: false,
+        beamChargeUntil: 0, beamUntil: 0, beamNextDamageAt: 0,
+        reforgeActive: false, reforgeDamage: 3, reforgeAngle: 0, reforgeTouching: false,
+        reforgeNextHitAt: Array(w.balls.length + 2).fill(0), diceNextDropAt: 0, iceNextBombAt: 0,
+      };
+      constrain(minion);
+      w.balls.push(minion);
+    }
+    w.events.push({ type: 'power', x: parent.x, y: parent.y, color: '#75d88d', radius: 2.1 });
+  }
+}
+
 function timedPowers(w: World) {
-  for (const ball of w.balls) {
+  for (const [owner, ball] of w.balls.entries()) {
     if (ball.hp <= 0) continue;
     if (ball.shield && w.tick >= ball.shieldUntil) ball.shield = 0;
     if (ball.dashUntil && w.tick >= ball.dashUntil) {
@@ -384,6 +556,32 @@ function timedPowers(w: World) {
       damage(w, ball, 1, '#ff7044'); ball.burnNextDamageAt += ticks(1 / 3);
     }
     if (ball.burnUntil && w.tick >= ball.burnUntil) { ball.burnUntil = 0; ball.burnNextDamageAt = 0; }
+    if (kind(ball) === 'cell' && ball.cellGrowthLevel < 5 && w.tick >= ball.cellNextGrowAt) {
+      ball.cellGrowthLevel++;
+      ball.cellNextGrowAt += ticks(5);
+      ball.radius *= 1.08;
+      constrain(ball);
+      w.events.push({ type: 'power', x: ball.x, y: ball.y, color: '#75d88d', radius: ball.radius + 0.5 });
+    }
+    if (kind(ball) === 'chess') {
+      updateChess(w, ball, owner);
+      if (ball.chessPhase !== 'idle') continue;
+    }
+    if (kind(ball) === 'dice' && w.tick >= ball.diceNextDropAt) {
+      const owned = w.diceTraps.filter(trap => trap.owner === owner);
+      if (owned.length >= 5) w.diceTraps.splice(w.diceTraps.indexOf(owned[0]), 1);
+      const id = w.nextHazardId++;
+      w.diceTraps.push({ x: ball.x, y: ball.y, owner, id, value: rollDie(w.seed, w.tick, id), ttl: ticks(10), nextHitAt: {} });
+      ball.diceNextDropAt = w.tick + ticks(2);
+      w.events.push({ type: 'power', x: ball.x, y: ball.y, color: '#f0eee5', radius: 0.8 });
+    }
+    if (kind(ball) === 'ice-cone' && w.tick >= ball.iceNextBombAt) {
+      const owned = w.iceBombs.filter(bomb => bomb.owner === owner);
+      if (owned.length >= 2) w.iceBombs.splice(w.iceBombs.indexOf(owned[0]), 1);
+      w.iceBombs.push({ x: ball.x, y: ball.y, owner, id: w.nextHazardId++, detonateAt: w.tick + ticks(1.5), color: '#9de7fa' });
+      ball.iceNextBombAt = w.tick + ticks(3);
+      w.events.push({ type: 'power', x: ball.x, y: ball.y, color: '#9de7fa', radius: 0.9 });
+    }
     const enemy = other(w, ball);
     if (!enemy) continue;
     if (kind(ball) === 'machine-gun') {
@@ -404,6 +602,13 @@ function timedPowers(w: World) {
       ball.abilityReadyAt = w.tick + ticks(interval);
       fireProjectiles(w, ball, enemy, { speed: 17, damage: 5, radius: 0.16, color: '#d7a5f4', ttl: 1.5 });
       w.events.push({ type: 'shot', x: ball.x, y: ball.y, color: '#d7a5f4' });
+      continue;
+    }
+    if (kind(ball) === 'hook') {
+      if (w.tick < ball.abilityReadyAt || Math.hypot(enemy.x - ball.x, enemy.y - ball.y) > 12) continue;
+      ball.abilityReadyAt = w.tick + ticks(4);
+      fireProjectiles(w, ball, enemy, { speed: 18, damage: 5, radius: 0.2, color: '#c49a72', ttl: 12 / 18, kind: 'hook' });
+      w.events.push({ type: 'shot', x: ball.x, y: ball.y, color: '#c49a72' });
       continue;
     }
     if (kind(ball) === 'burst') {
@@ -492,11 +697,14 @@ function updateArenaHazards(w: World) {
     laser.ttl--;
     for (let slot = 0; slot < w.balls.length; slot++) {
       const enemy = w.balls[slot];
-      if (enemy.hp <= 0 || enemy.team === w.balls[laser.owner]?.team) continue;
-      const distance = laser.axis === 'x' ? Math.abs(enemy.y - laser.at) : Math.abs(enemy.x - laser.at);
+      if (w.tick < laser.warningUntil || enemy.hp <= 0 || enemy.team === w.balls[laser.owner]?.team) continue;
+      const distance = laser.axis === 'x'
+        ? distanceToSegment(enemy.x, enemy.y, laser.start, laser.at, laser.end, laser.at)
+        : distanceToSegment(enemy.x, enemy.y, laser.at, laser.start, laser.at, laser.end);
       if (distance > enemy.radius + 0.15 || (laser.nextHitAt[String(slot)] ?? 0) > w.tick) continue;
-      damage(w, enemy, 4, laser.color);
-      laser.nextHitAt[String(slot)] = w.tick + ticks(1.15);
+      damage(w, enemy, 6, laser.color);
+      laser.nextHitAt[String(slot)] = w.tick + ticks(0.75);
+      w.hits++;
     }
     return laser.ttl > 0 && !!w.balls[laser.owner];
   });
@@ -529,6 +737,33 @@ function updateArenaHazards(w: World) {
     }
     return spike.ttl > 0 && !!w.balls[spike.owner];
   });
+  w.diceTraps = w.diceTraps.filter(trap => {
+    trap.ttl--;
+    for (let slot = 0; slot < w.balls.length; slot++) {
+      const enemy = w.balls[slot];
+      if (enemy.hp <= 0 || enemy.team === w.balls[trap.owner]?.team ||
+          (trap.nextHitAt[String(slot)] ?? 0) > w.tick || Math.hypot(enemy.x - trap.x, enemy.y - trap.y) > enemy.radius + 0.52) continue;
+      damage(w, enemy, trap.value, '#f0eee5');
+      trap.value = rollDie(w.seed, w.tick, trap.id);
+      trap.nextHitAt[String(slot)] = w.tick + ticks(0.8);
+      w.hits++;
+      w.events.push({ type: 'power', x: trap.x, y: trap.y, color: '#f0eee5', radius: 0.7 });
+    }
+    return trap.ttl > 0 && !!w.balls[trap.owner];
+  });
+  for (const bomb of w.iceBombs) {
+    if (w.tick < bomb.detonateAt) continue;
+    const burstId = w.nextShardBurstId++;
+    w.shardHitCounts[String(burstId)] = {};
+    for (let shard = 0; shard < 8 && w.projectiles.length < 32; shard++) {
+      const angle = shard / 8 * Math.PI * 2;
+      w.projectiles.push({ x: bomb.x, y: bomb.y, vx: Math.cos(angle) * 14, vy: Math.sin(angle) * 14,
+        owner: bomb.owner, ttl: ticks(1.25), damage: 4, radius: 0.18, color: bomb.color,
+        burstId, kind: 'ice', slowFactor: 0.75, slowDuration: 1 });
+    }
+    w.events.push({ type: 'power', x: bomb.x, y: bomb.y, color: bomb.color, radius: 2.3 });
+  }
+  w.iceBombs = w.iceBombs.filter(bomb => w.tick < bomb.detonateAt && !!w.balls[bomb.owner]);
 }
 
 function moveProjectiles(w: World) {
@@ -541,11 +776,27 @@ function moveProjectiles(w: World) {
     for(const enemy of enemies){
       const t = Math.max(0, Math.min(1, ((enemy.x - x) * dx + (enemy.y - y) * dy) / (dx * dx + dy * dy || 1)));
       if (Math.hypot(enemy.x - (x + t * dx), enemy.y - (y + t * dy)) <= enemy.radius + (shot.radius ?? 0.2)) {
+        if (shot.kind === 'hook') {
+          const owner = w.balls[shot.owner];
+          damage(w, enemy, shot.damage ?? 5, shot.color ?? '#c49a72');
+          if (owner?.hp && owner.hp > 0) {
+            const orbitAngle = Math.atan2(enemy.y - owner.y, enemy.x - owner.x);
+            w.hookTethers.push({ owner: shot.owner, target: w.balls.indexOf(enemy), expiresAt: w.tick + ticks(0.8),
+              angle: orbitAngle, radius: owner.radius + enemy.radius + 0.2 });
+          }
+          w.hits++;
+          return false;
+        }
         if (shot.burstId !== undefined) {
           const group = w.shardHitCounts[String(shot.burstId)] ?? (w.shardHitCounts[String(shot.burstId)] = {});
           const count = group[enemy.id] ?? 0;
           group[enemy.id] = count + 1;
-          if (count < 3) damage(w, enemy, shot.damage ?? 3, shot.color ?? '#b7f2ed');
+          if (count < 3) {
+            damage(w, enemy, shot.damage ?? 3, shot.color ?? '#b7f2ed');
+            if (shot.kind === 'ice' && shot.slowFactor && shot.slowDuration)
+              applySlow(w, enemy, `ice:${shot.burstId}`, shot.slowFactor, shot.slowDuration);
+            w.hits++;
+          }
         } else damage(w, enemy, shot.damage ?? 7, shot.color ?? '#ff9566');
         return false;
       }
@@ -554,6 +805,29 @@ function moveProjectiles(w: World) {
   });
   const activeBursts = new Set(w.projectiles.flatMap(shot => shot.burstId === undefined ? [] : [String(shot.burstId)]));
   for (const burstId of Object.keys(w.shardHitCounts)) if (!activeBursts.has(burstId)) delete w.shardHitCounts[burstId];
+}
+
+function updateHookTethers(w: World) {
+  w.hookTethers = w.hookTethers.filter(tether => {
+    const owner = w.balls[tether.owner], target = w.balls[tether.target];
+    if (!owner || !target || owner.hp <= 0 || target.hp <= 0) return false;
+    if (w.tick >= tether.expiresAt) {
+      damage(w, target, 7, '#c49a72');
+      const dx = target.x - owner.x, dy = target.y - owner.y, distance = Math.hypot(dx, dy) || 1;
+      target.vx = owner.vx + dx / distance * 12;
+      target.vy = owner.vy + dy / distance * 12;
+      w.hits++;
+      w.events.push({ type: 'power', x: target.x, y: target.y, color: '#c49a72', radius: 1 });
+      return false;
+    }
+    tether.angle += Math.PI * 2 / 0.8 * RULES.step;
+    target.x = owner.x + Math.cos(tether.angle) * tether.radius;
+    target.y = owner.y + Math.sin(tether.angle) * tether.radius;
+    target.vx = owner.vx - Math.sin(tether.angle) * tether.radius * (Math.PI * 2 / 0.8);
+    target.vy = owner.vy + Math.cos(tether.angle) * tether.radius * (Math.PI * 2 / 0.8);
+    constrain(target);
+    return true;
+  });
 }
 
 const axeCuttingEdge: readonly (readonly [number, number])[] = [
@@ -653,6 +927,37 @@ function updateAxeAttacks(w: World) {
   }
 }
 
+function updateReforgeAttacks(w: World) {
+  for (const companion of w.balls) {
+    if (companion.hp <= 0 || kind(companion) !== 'reforge' || !companion.reforgeActive) continue;
+    const previousAngle = companion.reforgeAngle;
+    const angleStep = Math.PI * 2 / 1.5 * RULES.step;
+    companion.reforgeAngle = (previousAngle + angleStep) % (Math.PI * 2);
+    const previousRadius = 2 + Math.cos(previousAngle) * 0.45;
+    const radius = 2 + Math.cos(companion.reforgeAngle) * 0.45;
+    const touching = radius <= companion.radius + 0.34;
+    if (touching && !companion.reforgeTouching && companion.reforgeDamage < 11) {
+      companion.reforgeDamage++;
+      w.events.push({ type: 'power', x: companion.x, y: companion.y, color: '#ffb86b', radius: 1.6 });
+    }
+    companion.reforgeTouching = touching;
+    const x1 = companion.x + Math.cos(previousAngle) * previousRadius;
+    const y1 = companion.y + Math.sin(previousAngle) * previousRadius;
+    const x2 = companion.x + Math.cos(companion.reforgeAngle) * radius;
+    const y2 = companion.y + Math.sin(companion.reforgeAngle) * radius;
+    for (let targetSlot = 0; targetSlot < w.balls.length; targetSlot++) {
+      const target = w.balls[targetSlot];
+      if (target.hp <= 0 || target.team === companion.team ||
+          (companion.reforgeNextHitAt[targetSlot] ?? 0) > w.tick ||
+          distanceToSegment(target.x, target.y, x1, y1, x2, y2) > target.radius + 0.38) continue;
+      companion.reforgeNextHitAt[targetSlot] = w.tick + ticks(0.7);
+      damage(w, target, companion.reforgeDamage, '#ffb86b');
+      w.hits++;
+      w.events.push({ type: 'hit', x: (x1 + x2) / 2, y: (y1 + y2) / 2, color: '#ffb86b', radius: 0.45 });
+    }
+  }
+}
+
 /** Mutates one world by exactly one simulation tick; independent of browser and renderer. */
 export function stepWorld(w: World): void {
   if (w.phase === 'finished') return;
@@ -664,9 +969,13 @@ export function stepWorld(w: World): void {
   updateStatuses(w);
   updateBladeAttacks(w);
   updateAxeAttacks(w);
+  updateReforgeAttacks(w);
   timedPowers(w);
   updateArenaHazards(w);
   moveProjectiles(w);
+  updateVampireLeeches(w);
+  updateHookTethers(w);
+  spawnCellMinions(w);
   if (w.tick > RULES.overtimeTick) {
     const damage = (4 + (w.tick - RULES.overtimeTick) * RULES.step * 0.6) * RULES.step;
     for (const b of w.balls) if (b.hp > 0) damageBallOvertime(w, b, damage);

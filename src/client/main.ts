@@ -87,16 +87,17 @@ const fighterTypes = Array.from(document.querySelectorAll<HTMLElement>('.fighter
 function updateHud() {
   world.balls.forEach((b, i) => {
     const def = MATCH_BALLS.find(candidate => candidate.id === b.abilityId);
-    if (def) arena.setBallColor(i, def.color);
     arena.setBallAbility(i, b.abilityId);
+    if (b.form === 'cell-minion') arena.setBallColor(i, '#b6e39b');
+    else if (def) arena.setBallColor(i, def.color);
   });
   for(let team=0;team<2;team++){
     const members=world.balls.filter(b=>b.team===team);
     const hp=Math.ceil(members.reduce((sum,b)=>sum+b.hp,0));
     const maxHp=members.reduce((sum,b)=>sum+b.maxHp,0);
-    const names=members.map(b=>MATCH_BALLS.find(def=>def.id===b.abilityId)?.name??b.id);
+    const names=members.map(b=>b.form==='cell-minion'?'Mała komórka':MATCH_BALLS.find(def=>def.id===b.abilityId)?.name??b.id);
     fighterNames[team].textContent=names.join(' + ');
-    fighterTypes[team].textContent=members.length>1?`DRUŻYNA ${team+1} · ${members.length} KULKI`:(MATCH_BALLS.find(def=>def.id===members[0]?.abilityId)?.ability??'KULKA PODSTAWOWA');
+    fighterTypes[team].textContent=members.length>1?`DRUŻYNA ${team+1} · ${members.length} KULKI`:(members[0]?.form==='cell-minion'?'PODZIELONA KOMÓRKA':MATCH_BALLS.find(def=>def.id===members[0]?.abilityId)?.ability??'KULKA PODSTAWOWA');
     get(`hp-${team}`).innerHTML=`${hp} <small>/ ${maxHp}</small>`;
     get(`bar-${team}`).style.width=`${maxHp?hp/maxHp*100:0}%`;
     get(`health-${team}`).setAttribute('aria-valuenow',String(hp));
@@ -393,7 +394,9 @@ onlineAim = connectRooms(state => {
   lastNetworkPhase = state.phase;
   arena.clearAimPreview();
   arena.beforeStep(world);
-  world = { ...state.world, contacts: new Set(state.world.contacts), collisionLimitHits: state.world.collisionLimitHits };
+  world = { ...state.world, contacts: new Set(state.world.contacts), collisionLimitHits: state.world.collisionLimitHits,
+    diceTraps: state.world.diceTraps ?? [], iceBombs: state.world.iceBombs ?? [],
+    hookTethers: state.world.hookTethers ?? [], nextHazardId: state.world.nextHazardId ?? 1 };
   arena.afterStep(world);
   audio.playEvents(world.events, world.tick);
   world.balls.forEach((ball,i) => {
