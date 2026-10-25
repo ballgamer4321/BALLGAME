@@ -2,7 +2,7 @@
 
 Etapy 1–6 DONE, po nich dodatkowe poprawki wyboru kulek i ekranu startowego. Etap 7 IN PROGRESS: kod gotowy, ale kontrola wizualna i FPS przeglądarki zablokowane. Na osobne polecenie użytkownika rozpoczęto etap 8; etap 7 zachowuje status do czasu ręcznej lub dostępnej kontroli. Projekt jest w C:\Users\antre\Desktop\ball game. Repo Git jest powiązane z `https://github.com/ballgamer4321/BALLGAME` na bazie istniejącego `origin/main`.
 
-Działa lokalny pojedynek, multiplayer 1v1/2v2, trening z jawnie oznaczonym botem, czternaście kulek ze zdolnościami, wybór z trzech ofert i raz z kolekcji na mecz, celowanie, rundy/rewanż, token powrotu w 30 s oraz sprzątanie pokoi. Mapa jest kwadratowa 20×20; arena, kulki i ekran wyboru zostały powiększone. Po utracie HP pojawia się dymek obrażeń; widoczny zegar usunięto. Nowe efekty to ładowany promień, laserowa bariera, salwy pocisków, sieć-pułapka i modele z indywidualnymi dodatkami.
+Działa lokalny pojedynek, multiplayer 1v1/2v2, trening z jawnie oznaczonym botem, czternaście kulek ze zdolnościami, wybór z trzech ofert i raz z kolekcji na mecz, celowanie, rundy/rewanż, token powrotu w 30 s oraz sprzątanie pokoi. Mapa jest kwadratowa 20×20; arena, kulki i ekran wyboru zostały powiększone. Po utracie HP pojawia się dymek obrażeń; widoczny zegar usunięto. Nowe efekty to ładowany promień, laserowa bariera, salwy pocisków, sieć-pułapka i modele z indywidualnymi dodatkami. Ostatni lifting UI stosuje grafitowe powierzchnie, oszczędny limonkowy akcent i numerowane kafle trybów.
 
 Uruchomienie w osobnych terminalach z katalogu projektu:
 - node node_modules/tsx/dist/cli.mjs src/server/index.ts

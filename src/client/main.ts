@@ -9,10 +9,10 @@ import { getCachedProgress } from './profile';
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
   <header class="header">
-    <a class="brand" href="./" aria-label="Orbita — strona główna"><span class="brand-symbol">◉</span> ORBITA<span class="brand-sub">STARCIE</span></a>
+    <a class="brand" href="./" aria-label="Orbita — strona główna"><span class="brand-symbol" aria-hidden="true">◉</span><span class="brand-name">ORBITA</span><span class="brand-sub">STARCIE</span></a>
     <div class="mode"><span></span> WYBIERZ TRYB</div>
     <button id="exit-match" class="exit-match" type="button" hidden>← Zmień tryb</button>
-    <span class="build-label">WERSJA / 07</span>
+    <span class="build-label">AUTO BATTLE <i></i> ARENA 01</span>
   </header>
   <main>
     <div class="layout">
