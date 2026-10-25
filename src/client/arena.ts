@@ -4,12 +4,48 @@ import { COSMETICS } from '../shared/progression';
 import type { World } from '../simulation/world';
 
 interface EnergyStrip { group: THREE.Group; core: THREE.Mesh; glow: THREE.Mesh; marker: THREE.Mesh; }
-interface ProjectileVisual { orb: THREE.Mesh; shard: THREE.Mesh; streak: THREE.Mesh; hook: THREE.Group; bee: THREE.Group; bullet: THREE.Group; cannonball: THREE.Group; knife: THREE.Group; rocket: THREE.Group; arrow: THREE.Group; }
+interface ProjectileVisual { orb: THREE.Mesh; shard: THREE.Mesh; streak: THREE.Mesh; hook: THREE.Group; bee: THREE.Group; bullet: THREE.Group; cannonball: THREE.Group; knife: THREE.Group; rocket: THREE.Group; arrow: THREE.Group; special: THREE.Group; }
 interface PowerSpark { mesh: THREE.Mesh; life: number; maxLife: number; vx: number; vz: number; spin: number; }
 interface DiceVisual { group: THREE.Group; pips: THREE.Mesh[]; }
 interface TimedGroup { group: THREE.Group; life: number; maxLife: number; }
 
 const AXE_VISUAL_SCALE = 1.28;
+
+// Models stay upright while the ball rolls. These weapons track the closest opponent
+// with yaw only; melee rings have their own single-axis rotation pivot.
+const AIMED_WEAPON_IDS = new Set([
+  'amber', 'cyan', 'orange', 'laser', 'cannon', 'thief', 'hook', 'ice-cone', 'bow',
+  'cannon-turret', 'range', 'acid', 'cactus', 'harpoon', 'hive', 'potion', 'ray',
+  'spear', 'mirror', 'volcano', 'seed', 'parry', 'comet',
+]);
+const MELEE_RING_RADII: Record<string, number> = {
+  jade: 1.86, steel: 1.82, violet: 1.78, burst: 1.9, charge: 1.86,
+  'poison-spike': 2.16, axe: 2.72, blade: 2.7, vampire: 1.9, electric: 1.82,
+  spider: 1.82, 'big-spike': 2.2, spear: 2.12, parry: 1.95, mirror: 1.9,
+};
+
+function addWeaponRing(group: THREE.Group, radius: number, color: string) {
+  const pivot = new THREE.Group();
+  pivot.name = 'weapon-ring-pivot';
+  const material = new THREE.MeshStandardMaterial({
+    color, metalness: 0.7, roughness: 0.28, emissive: color, emissiveIntensity: 0.12,
+    transparent: true, opacity: 0.86,
+  });
+  const track = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.045, 8, 80), material);
+  // TorusGeometry lies in XY by default. This fixed quarter-turn lays it on the arena;
+  // only the parent pivot spins, around world Y.
+  track.rotation.x = Math.PI / 2;
+  track.castShadow = true;
+  pivot.add(track);
+  for (let index = 0; index < 4; index++) {
+    const angle = index * Math.PI / 2;
+    const marker = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), material);
+    marker.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+    pivot.add(marker);
+  }
+  group.add(pivot);
+  group.userData.weaponRing = pivot;
+}
 
 function makeEnergyStrip(): EnergyStrip {
   const group = new THREE.Group();
@@ -593,6 +629,9 @@ function makeBallSignature(id: string, color: string) {
       add(new THREE.CylinderGeometry(0.2,0.25,0.86,8),accent,[0,0.28,0.78]);
       for(const side of [-1,1]) { add(new THREE.CylinderGeometry(0.1,0.13,0.43,7),accent,[side*0.26,0.32,0.78],[0,0,side*0.55]); add(new THREE.ConeGeometry(0.14,0.34,5),steel,[side*0.34,0.6,0.78],[0,0,side*-0.7]); }
       for(let i=0;i<6;i++){const a=i/6*Math.PI*2; add(new THREE.ConeGeometry(0.09,0.3,5),steel,[Math.cos(a)*0.34,0.26,0.78+Math.sin(a)*0.34],[Math.cos(a)*0.9,0,Math.sin(a)*0.9]);}
+      add(new THREE.CylinderGeometry(0.16,0.22,0.52,7),dark,[0,0.36,1.12],[Math.PI/2,0,0]);
+      add(new THREE.TorusGeometry(0.19,0.055,7,18),brass,[0,0.36,1.4],[Math.PI/2,0,0]);
+      add(new THREE.ConeGeometry(0.1,0.24,5),steel,[0,0.36,1.43],[Math.PI/2,0,0]);
     } else if (id === 'fibonacci') {
       for(let i=0;i<5;i++){ const ring=add(new THREE.TorusGeometry(0.26+i*0.17,0.035,7,32),i%2?brass:accent,[0,0.12,0.78],[Math.PI/2,0,0]); ring.rotation.z=i*0.32; }
       for(let i=0;i<5;i++){const a=i*2.4; add(new THREE.OctahedronGeometry(0.13+i*0.02),brass,[Math.cos(a)*(0.25+i*0.18),0.18,0.78+Math.sin(a)*(0.25+i*0.18)]);}
@@ -605,6 +644,9 @@ function makeBallSignature(id: string, color: string) {
     } else if (id === 'hive') {
       for(let i=0;i<7;i++){const a=i/7*Math.PI*2; const cell=add(new THREE.CylinderGeometry(0.18,0.18,0.18,6),brass,[Math.cos(a)*0.44,0.14,0.8+Math.sin(a)*0.44],[Math.PI/2,0,0]); cell.name='hive-cell';}
       add(new THREE.SphereGeometry(0.22,12,10),accent,[0,0.16,0.8]);
+      add(new THREE.CylinderGeometry(0.2,0.26,0.4,6),dark,[0,0.16,1.13],[Math.PI/2,0,0]);
+      add(new THREE.TorusGeometry(0.2,0.055,7,18),brass,[0,0.16,1.34],[Math.PI/2,0,0]);
+      add(new THREE.SphereGeometry(0.1,10,8),accent,[0,0.16,1.35]);
       for(let i=0;i<3;i++){const bee=new THREE.Group(); bee.name='hive-bee'; add(new THREE.SphereGeometry(0.12,10,8),dark,[Math.cos(i*2.1)*0.86,0.25,0.78+Math.sin(i*2.1)*0.86]); add(new THREE.SphereGeometry(0.1,10,8),brass,[Math.cos(i*2.1)*0.86,0.27,0.78+Math.sin(i*2.1)*0.86]);}
     } else if (id === 'potion') {
       add(new THREE.CylinderGeometry(0.3,0.38,0.68,8),accent,[0,0.18,0.9],[Math.PI/2,0,0]);
@@ -654,6 +696,9 @@ function makeBallSignature(id: string, color: string) {
       const cone=add(new THREE.ConeGeometry(0.52,0.96,7),dark,[0,0.31,0.76]); cone.rotation.x=Math.PI;
       add(new THREE.TorusGeometry(0.29,0.075,8,18),accent,[0,0.7,0.76],[Math.PI/2,0,0]);
       for(let i=0;i<4;i++){const a=i/4*Math.PI*2; add(new THREE.ConeGeometry(0.16,0.45,5),i%2?brass:accent,[Math.cos(a)*0.4,0.31,0.76+Math.sin(a)*0.4]);}
+      add(new THREE.CylinderGeometry(0.22,0.32,0.42,7),dark,[0,0.23,1.03],[Math.PI/2,0,0]);
+      add(new THREE.TorusGeometry(0.23,0.065,8,20),brass,[0,0.23,1.27],[Math.PI/2,0,0]);
+      add(new THREE.SphereGeometry(0.15,10,8),accent,[0,0.23,1.29]);
     } else if (id === 'chrono') {
       const face=add(new THREE.CylinderGeometry(0.46,0.46,0.15,20),brass,[0,0.2,0.82],[Math.PI/2,0,0]); face.name='chrono-face';
       add(new THREE.TorusGeometry(0.53,0.06,8,28),dark,[0,0.2,0.82],[Math.PI/2,0,0]);
@@ -701,7 +746,9 @@ function makeBallSignature(id: string, color: string) {
 
     const shadow = new THREE.Mesh(makeAxeHeadGeometry(), dark);
     shadow.scale.set(1.06, 1.06, 1);
-    shadow.position.z = 0.035;
+    // Keep the dark offset plate behind the silver blade so it reads as a shadow,
+    // instead of covering the cutting edge from the top-down camera.
+    shadow.position.z = -0.045;
     shadow.castShadow = true; blade.add(shadow);
     const head = new THREE.Mesh(makeAxeHeadGeometry(), steel);
     head.castShadow = true; head.receiveShadow = true; blade.add(head);
@@ -732,6 +779,8 @@ function makeBallSignature(id: string, color: string) {
     blade.add(new THREE.Line(edgeGeometry, new THREE.LineBasicMaterial({ color: 0xf7fbff })));
     add(new THREE.SphereGeometry(0.13, 12, 10), dark, [start.x, start.y, start.z]);
   }
+  const ringRadius = MELEE_RING_RADII[id];
+  if (ringRadius) addWeaponRing(group, ringRadius, color);
   return group;
 }
 
@@ -857,6 +906,46 @@ function makeShotFlashVisual(weapon: string, color: string) {
       shard.position.set(Math.cos(angle) * 0.18, 0, Math.sin(angle) * 0.18);
       shard.rotation.set(angle, angle * 0.6, 0); group.add(shard);
     }
+  } else if (weapon === 'acid') {
+    add(new THREE.SphereGeometry(0.16, 10, 8), '#d9f48a', [0, 0, 0.15]);
+    add(new THREE.ConeGeometry(0.12, 0.3, 6), color, [0, 0, 0.32], [Math.PI / 2, 0, 0]);
+    for (const side of [-1, 1]) add(new THREE.SphereGeometry(0.075, 8, 6), '#e6ff9a', [side * 0.18, 0, 0.08]);
+  } else if (weapon === 'potion') {
+    add(new THREE.SphereGeometry(0.17, 10, 8), color, [0, 0, 0.16]);
+    add(new THREE.BoxGeometry(0.25, 0.035, 0.035), '#fff4d7', [0, 0, 0.15]);
+    for (const side of [-1, 1]) add(new THREE.TetrahedronGeometry(0.09), '#ffffff', [side * 0.17, 0.06, 0.24], [0.4, side * 0.5, 0.3]);
+  } else if (weapon === 'volcano') {
+    for (let i = 0; i < 3; i++) {
+      add(new THREE.DodecahedronGeometry(0.14 + i * 0.018, 0), i === 1 ? '#ffca77' : color,
+        [(i - 1) * 0.15, (i % 2) * 0.08, 0.17 + i * 0.08], [i * 0.7, i * 0.4, i * 0.6]);
+    }
+  } else if (weapon === 'cactus' || weapon === 'seed') {
+    add(new THREE.ConeGeometry(0.1, 0.55, 5), color, [0, 0, 0.25], [Math.PI / 2, 0, 0]);
+    for (const side of [-1, 1]) add(new THREE.ConeGeometry(0.055, 0.2, 5), '#f2f5d5', [side * 0.09, 0, 0.02], [Math.PI / 2, 0, side * -0.55]);
+  } else if (weapon === 'hive') {
+    for (let i = 0; i < 3; i++) {
+      add(new THREE.SphereGeometry(0.075, 8, 6), i === 1 ? '#fff1aa' : '#efc863',
+        [(i - 1) * 0.13, (i % 2) * 0.09, 0.15 + i * 0.06]);
+    }
+  } else if (weapon === 'harpoon' || weapon === 'hook') {
+    add(new THREE.CylinderGeometry(0.04, 0.06, 0.55, 7), '#b38a61', [0, 0, 0.22], [Math.PI / 2, 0, 0]);
+    add(new THREE.ConeGeometry(0.12, 0.28, 5), '#e4edf0', [0, 0, 0.58], [Math.PI / 2, 0, 0]);
+    add(new THREE.TorusGeometry(0.13, 0.035, 6, 12, Math.PI * 1.45), color, [0, 0, 0.49], [0, 0, 0.6]);
+  } else if (weapon === 'ray' || weapon === 'laser' || weapon === 'beam') {
+    add(new THREE.BoxGeometry(0.12, 0.08, 0.7), color, [0, 0, 0.28]);
+    add(new THREE.BoxGeometry(0.32, 0.16, 0.12), '#ffffff', [0, 0, 0.57]);
+    add(new THREE.TorusGeometry(0.17, 0.04, 6, 16), color, [0, 0, 0.58]);
+  } else if (weapon === 'ice') {
+    for (let i = 0; i < 4; i++) {
+      const angle = i * Math.PI / 2;
+      add(new THREE.ConeGeometry(0.065, 0.36, 5), color,
+        [Math.cos(angle) * 0.14, Math.sin(angle) * 0.14, 0.2], [Math.PI / 2, 0, angle]);
+    }
+    add(new THREE.OctahedronGeometry(0.12), '#ffffff', [0, 0, 0.2]);
+  } else if (weapon === 'cannon' || weapon === 'cannon-turret') {
+    add(new THREE.CylinderGeometry(0.17, 0.24, 0.36, 8), color, [0, 0, 0.18], [Math.PI / 2, 0, 0]);
+    add(new THREE.TorusGeometry(0.17, 0.055, 7, 16), '#fff0c4', [0, 0, 0.4]);
+    add(new THREE.ConeGeometry(0.17, 0.35, 6), '#ffd589', [0, 0, 0.48], [Math.PI / 2, 0, 0]);
   } else {
     const flashColor = weapon === 'beam' ? '#76f5ff' : weapon === 'hook' ? '#f3d8a2' : color;
     add(new THREE.ConeGeometry(0.2, weapon === 'cannon' ? 0.6 : 0.44, 6), flashColor,
@@ -913,6 +1002,68 @@ function makeArrowVisual() {
   }
   group.visible = false;
   return group;
+}
+
+function makeSpecialProjectileVisual() {
+  const root = new THREE.Group();
+  const variant = (name: string) => {
+    const group = new THREE.Group(); group.name = name; group.visible = false; root.add(group); return group;
+  };
+  const acid = variant('acid');
+  const acidBody = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10),
+    new THREE.MeshPhysicalMaterial({ color: '#b5dc68', emissive: '#719c35', emissiveIntensity: 0.24, roughness: 0.22, clearcoat: 0.8 }));
+  acidBody.name = 'special-core'; acidBody.scale.set(0.82, 1.05, 0.88); acid.add(acidBody);
+  const acidTip = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.26, 6),
+    new THREE.MeshStandardMaterial({ color: '#d9f48a', emissive: '#8bbd45', emissiveIntensity: 0.2 }));
+  acidTip.rotation.x = Math.PI / 2; acidTip.position.z = 0.19; acid.add(acidTip);
+
+  const potion = variant('potion');
+  const bottle = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10),
+    new THREE.MeshPhysicalMaterial({ color: '#bd88e8', transparent: true, opacity: 0.9, roughness: 0.16, metalness: 0.1, clearcoat: 1 }));
+  bottle.name = 'special-core'; bottle.scale.set(0.85, 1.12, 0.72); potion.add(bottle);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.1, 0.14, 8),
+    new THREE.MeshStandardMaterial({ color: '#e0d7c8', metalness: 0.52, roughness: 0.3 }));
+  neck.rotation.x = Math.PI / 2; neck.position.z = 0.2; potion.add(neck);
+  const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.07, 0.1, 7),
+    new THREE.MeshStandardMaterial({ color: '#80563b', roughness: 0.74 }));
+  cork.rotation.x = Math.PI / 2; cork.position.z = 0.3; potion.add(cork);
+  const label = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.12, 0.025),
+    new THREE.MeshStandardMaterial({ color: '#f4e5c8', roughness: 0.65 }));
+  label.position.set(0, 0, 0.12); potion.add(label);
+
+  const lava = variant('lava');
+  const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.23, 0),
+    new THREE.MeshStandardMaterial({ color: '#573a32', emissive: '#ff6033', emissiveIntensity: 0.72, roughness: 0.42 }));
+  rock.name = 'special-core'; lava.add(rock);
+  for (const [x, y, z] of [[-0.1, 0.07, 0.12], [0.11, -0.08, 0.14], [0.02, 0.15, -0.08]]) {
+    const ember = new THREE.Mesh(new THREE.OctahedronGeometry(0.065),
+      new THREE.MeshBasicMaterial({ color: '#ffc173' }));
+    ember.position.set(x, y, z); lava.add(ember);
+  }
+
+  const thorn = variant('thorn');
+  const spike = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.58, 5),
+    new THREE.MeshStandardMaterial({ color: '#d6f198', metalness: 0.3, roughness: 0.27 }));
+  spike.name = 'special-core'; spike.rotation.x = Math.PI / 2; thorn.add(spike);
+  for (const side of [-1, 1]) {
+    const barb = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.2, 5),
+      new THREE.MeshStandardMaterial({ color: '#79c774', roughness: 0.36 }));
+    barb.rotation.set(Math.PI / 2, 0, side * -0.65); barb.position.set(side * 0.085, 0, -0.08); thorn.add(barb);
+  }
+
+  const seed = variant('seed');
+  const seedBody = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8),
+    new THREE.MeshStandardMaterial({ color: '#80563b', roughness: 0.68 }));
+  seedBody.name = 'special-core'; seedBody.scale.set(0.82, 0.72, 1.35); seed.add(seedBody);
+  const seedTip = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.26, 5),
+    new THREE.MeshStandardMaterial({ color: '#9bd77c', roughness: 0.38 }));
+  seedTip.rotation.x = Math.PI / 2; seedTip.position.z = 0.24; seed.add(seedTip);
+  for (const side of [-1, 1]) {
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 5),
+      new THREE.MeshStandardMaterial({ color: '#78c879', roughness: 0.4 }));
+    leaf.position.set(side * 0.11, 0.12, -0.04); leaf.rotation.z = side * -0.85; seed.add(leaf);
+  }
+  return root;
 }
 
 function makeCannonTurretVisual() {
@@ -973,6 +1124,7 @@ export class Arena {
   private scene = new THREE.Scene();
   private camera = new THREE.OrthographicCamera(-14, 14, 11, -11, 0.1, 100);
   private balls: THREE.Group[] = [];
+  private teamRims: THREE.Mesh[] = [];
   private trails: THREE.Mesh[][] = [];
   private ballBaseColors: string[] = [];
   private cosmeticTints: THREE.Color[] = [];
@@ -1078,6 +1230,10 @@ export class Arena {
       this.chargeCrystals.push(crystal);
       this.abilityGroups.push(null); this.abilityIds.push(null);
       this.balls.push(group); this.scene.add(group);
+      const teamRim = new THREE.Mesh(new THREE.TorusGeometry(1, 0.026, 6, 56),
+        new THREE.MeshStandardMaterial({ color: '#7bd6ff', emissive: '#4b9fdb', emissiveIntensity: 0.12,
+          metalness: 0.42, roughness: 0.32, transparent: true, opacity: 0.9 }));
+      teamRim.rotation.x = Math.PI / 2; this.scene.add(teamRim); this.teamRims.push(teamRim);
       const trail: THREE.Mesh[] = [];
       for (let i = 0; i < 12; i++) {
         const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6),
@@ -1158,6 +1314,10 @@ export class Arena {
       crystal.position.set(0, 0.48, 1.24); crystal.visible = false; group.add(crystal);
       this.chargeCrystals.push(crystal); this.abilityGroups.push(null); this.abilityIds.push(null);
       this.balls.push(group); this.scene.add(group);
+      const teamRim = new THREE.Mesh(new THREE.TorusGeometry(1, 0.026, 6, 56),
+        new THREE.MeshStandardMaterial({ color: '#7bd6ff', emissive: '#4b9fdb', emissiveIntensity: 0.12,
+          metalness: 0.42, roughness: 0.32, transparent: true, opacity: 0.9 }));
+      teamRim.rotation.x = Math.PI / 2; this.scene.add(teamRim); this.teamRims.push(teamRim);
       const trail: THREE.Mesh[] = [];
       for (let i = 0; i < 12; i++) {
         const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6),
@@ -1218,9 +1378,9 @@ export class Arena {
       material.map?.dispose(); material.dispose();
     });
     this.damageBubbles = [];
-    this.projectiles.forEach(({ orb, shard, streak, hook, bullet, cannonball, knife, rocket, arrow }) => {
+    this.projectiles.forEach(({ orb, shard, streak, hook, bullet, cannonball, knife, rocket, arrow, special }) => {
       orb.visible = false; shard.visible = false; streak.visible = false; hook.visible = false;
-      bullet.visible = false; cannonball.visible = false; knife.visible = false; rocket.visible = false; arrow.visible = false;
+      bullet.visible = false; cannonball.visible = false; knife.visible = false; rocket.visible = false; arrow.visible = false; special.visible = false;
     });
   }
 
@@ -1283,9 +1443,10 @@ export class Arena {
     const definition = MATCH_BALLS.find(ball => ball.id === abilityId);
     if (!definition) { this.abilityGroups[index] = null; return; }
     const signature = makeBallSignature(definition.id, definition.color);
-    if (definition.id === 'axe') signature.scale.setScalar(AXE_VISUAL_SCALE);
-    if (definition.id === 'axe' || definition.id === 'snake') this.scene.add(signature);
-    else group.add(signature);
+    signature.scale.setScalar(definition.id === 'axe' ? AXE_VISUAL_SCALE : 1.14);
+    // Weapon mounts live in world space, separate from the rolling sphere. That keeps
+    // barrels pointed at their target and blades level with the arena.
+    this.scene.add(signature);
     this.axeAngleReady[index] = false;
     this.abilityGroups[index] = signature;
   }
@@ -1400,14 +1561,28 @@ export class Arena {
       const x = THREE.MathUtils.lerp(p.x, b.x, alpha), y = THREE.MathUtils.lerp(p.y, b.y, alpha);
       const group = this.balls[i]; group.position.set(x, b.radius + 0.04, y);
       group.scale.setScalar(b.hp <= 0 ? 0.35 : b.radius / BASIC_BALLS[i%2].radius);
+      const teamColor = b.team === 0 ? '#78d7ff' : '#ff806f';
+      const teamRim = this.teamRims[i];
+      teamRim.visible = b.hp > 0;
+      teamRim.position.set(x, 0.04, y);
+      teamRim.scale.setScalar(b.radius + 0.13);
+      (teamRim.material as THREE.MeshStandardMaterial).color.set(teamColor);
+      const orbMaterial = (group.children[0] as THREE.Mesh).material as THREE.MeshPhysicalMaterial;
+      const statusColor = b.stunnedUntil > w.tick ? '#fff2a8'
+        : b.burnUntil > w.tick ? '#ff7044'
+          : b.poisonStacks.length ? '#8cda68'
+            : b.slowedUntil > w.tick ? '#8deaff'
+              : b.shieldUntil > w.tick && b.shield > 0 ? '#d7b7ff' : null;
+      orbMaterial.emissive.set(statusColor ?? '#000000');
+      orbMaterial.emissiveIntensity = statusColor ? (b.stunnedUntil > w.tick ? 0.5 : 0.36) : 0;
       const signature = this.abilityGroups[i];
       if (signature) {
         signature.visible = b.hp > 0;
-        signature.position.set(0, 0, 0);
         signature.rotation.set(0, 0, 0);
+        signature.position.set(x, b.radius + 0.04, y);
+        let signatureYaw = 0;
         if (b.abilityId === 'axe') {
-          // Keep the weapon on the arena floor, independent from the ball's rolling tilt.
-          signature.visible = b.hp > 0;
+          // The axe swings around the ball on the arena plane, matching its hit arc.
           signature.position.set(x, 0.16, y);
           if (!this.axeAngleReady[i]) {
             this.axeAngles[i] = b.axeAngle;
@@ -1416,7 +1591,8 @@ export class Arena {
             const difference = Math.atan2(Math.sin(b.axeAngle - this.axeAngles[i]), Math.cos(b.axeAngle - this.axeAngles[i]));
             this.axeAngles[i] += difference * Math.min(1, delta * 24);
           }
-          signature.rotation.y = this.reducedMotion.matches ? 0 : -this.axeAngles[i];
+          signatureYaw = this.reducedMotion.matches ? 0 : -this.axeAngles[i];
+          signature.rotation.y = signatureYaw;
         }
         if (b.abilityId === 'snake') {
           signature.position.set(x, 0.08, y);
@@ -1433,26 +1609,23 @@ export class Arena {
             segment.position.y += this.reducedMotion.matches ? 0 : Math.sin(this.fxClock * 6 - index * 0.48) * 0.025;
           });
         }
+        const ring = signature.userData.weaponRing as THREE.Group | undefined;
+        if (ring) {
+          const baseY = b.abilityId === 'axe' ? 0.16 : b.radius + 0.04;
+          ring.position.set(0, (0.055 - baseY) / signature.scale.y, 0);
+          ring.rotation.x = 0; ring.rotation.z = 0;
+          if (b.abilityId !== 'axe' && b.abilityId !== 'blade')
+            ring.rotation.y = this.reducedMotion.matches ? 0 : this.fxClock * (b.abilityId === 'electric' ? 1.15 : 0.58);
+        }
         const enemies = w.balls.filter(candidate => candidate.hp > 0 && candidate.team !== b.team)
           .sort((a, other) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(other.x - b.x, other.y - b.y));
         const target = enemies[0];
-        if (target && ['beam', 'machine', 'machine-gun', 'cannon', 'orange', 'steel', 'thief', 'hook', 'spear', 'harpoon', 'cactus', 'ray'].includes(b.abilityId ?? ''))
-          signature.rotation.y = Math.atan2(target.x - x, target.y - y);
+        if (target && AIMED_WEAPON_IDS.has(b.abilityId ?? '')) {
+          signatureYaw = Math.atan2(target.x - x, target.y - y);
+          signature.rotation.y = signatureYaw;
+        }
         if (!this.reducedMotion.matches) {
-          const spinRate: Record<string, number> = {
-            amber: 0.7, jade: 0.52, violet: 0.9, gold: 1.35, cyan: 0.72, pink: 0.9, laser: 0.85,
-            blade: 0.8, charge: 0.16, glass: 0.22, 'poison-spike': 0.24,
-            chess: 0.12, dice: 0.32, electric: 1.2, 'ice-cone': 0.55, zone: 0.38, apple: 0.22,
-            'electro-king': 1.1, frost: 0.42, range: 0.24, virus: 0.68, wdc: 0.45, bomb: 0.38,
-            conductor: 0.8, acid: 0.56, cactus: 0.48, fibonacci: 0.72, harpoon: 0.72, hive: 1.15,
-            potion: 0.78, ray: 0.64, shackles: 0.38, spear: 0.18, verity: 0.8, gravity: 0.35,
-            mirror: 0.42, magnet: 0.4, portal: 0.72, 'echo-ball': 0.45, volcano: 0.46,
-            chrono: 0.58, comet: 1.25, seed: 0.3, parry: 0.32,
-          };
-          if (b.abilityId !== 'axe' && spinRate[b.abilityId ?? '']) signature.rotation.y = b.abilityId === 'blade'
-            ? -b.bladeAngle : this.fxClock * spinRate[b.abilityId ?? ''];
           if (b.abilityId === 'spider') {
-            signature.rotation.y = this.fxClock * 0.32;
             signature.children.forEach(leg => {
               if (!(leg instanceof THREE.Mesh) || leg.name !== 'spider-leg') return;
               const rest = leg.userData.restRotation as { x: number; y: number; z: number };
@@ -1461,6 +1634,13 @@ export class Arena {
                 rest.y, rest.z + Math.cos(this.fxClock * 10 + phase) * 0.2);
             });
           }
+          signature.traverse(part => {
+            if (!(part instanceof THREE.Group)) return;
+            if (part.name === 'gold-orbit') part.rotation.y = this.fxClock * 1.1;
+            if (part.name === 'echo-orbit') part.rotation.y = this.fxClock * 0.72;
+            if (part.name === 'signature-orbit' && !AIMED_WEAPON_IDS.has(b.abilityId ?? ''))
+              part.rotation.y = this.fxClock * 0.42;
+          });
           signature.children.forEach(part => {
             if (!(part instanceof THREE.Mesh)) return;
             if (part.name === 'chrono-hand') part.rotation.y = this.reducedMotion.matches ? 0 : -this.fxClock * 4;
@@ -1499,13 +1679,15 @@ export class Arena {
           });
         }
         if (b.abilityId === 'blade') {
-          signature.rotation.y = this.reducedMotion.matches ? 0 : -b.bladeAngle;
+          signatureYaw = this.reducedMotion.matches ? 0 : -b.bladeAngle;
+          signature.rotation.y = signatureYaw;
           const orbit = signature.getObjectByName('blade-orbit');
           const blades = orbit?.userData.blades as THREE.Group[] | undefined;
           blades?.forEach((sword, index) => { sword.visible = index < b.bladeCount; });
         }
         if (b.abilityId !== 'axe' && b.abilityId !== 'snake' && this.recoil[i] > 0) {
-          signature.position.set(-Math.sin(signature.rotation.y) * this.recoil[i], 0, -Math.cos(signature.rotation.y) * this.recoil[i]);
+          signature.position.x = x - Math.sin(signatureYaw) * this.recoil[i];
+          signature.position.z = y - Math.cos(signatureYaw) * this.recoil[i];
         }
       }
       const satellite = group.children[1] as THREE.Mesh;
@@ -1532,7 +1714,11 @@ export class Arena {
       } else trail.forEach(particle => { particle.visible = false; });
       this.updateChessRoute(i, b);
     });
-    this.balls.forEach((group,i)=>{group.visible=i<w.balls.length;this.trails[i].forEach(p=>{if(i>=w.balls.length)p.visible=false;});});
+    this.balls.forEach((group,i)=>{
+      group.visible=i<w.balls.length;
+      if (i >= w.balls.length) this.teamRims[i].visible = false;
+      this.trails[i].forEach(p=>{if(i>=w.balls.length)p.visible=false;});
+    });
     this.flashes = this.flashes.filter(f => {
       f.life -= effectDelta;
       if (f.mesh.geometry instanceof THREE.RingGeometry) f.mesh.scale.addScalar(effectDelta * 5);
@@ -1591,10 +1777,11 @@ export class Arena {
       const knife = makeKnifeProjectileVisual();
       const rocket = makeRocketVisual();
       const arrow = makeArrowVisual();
-      this.scene.add(orb, shard, streak, hook, bee, bullet, cannonball, knife, rocket, arrow);
-      this.projectiles.push({ orb, shard, streak, hook, bee, bullet, cannonball, knife, rocket, arrow });
+      const special = makeSpecialProjectileVisual();
+      this.scene.add(orb, shard, streak, hook, bee, bullet, cannonball, knife, rocket, arrow, special);
+      this.projectiles.push({ orb, shard, streak, hook, bee, bullet, cannonball, knife, rocket, arrow, special });
     }
-    this.projectiles.forEach(({ orb, shard, streak, hook, bee, bullet, cannonball, knife, rocket, arrow }, i) => {
+    this.projectiles.forEach(({ orb, shard, streak, hook, bee, bullet, cannonball, knife, rocket, arrow, special }, i) => {
       const shot = w.projectiles[i];
       const weapon = shot?.weapon ?? '';
       const isBullet = weapon === 'machine' || weapon === 'machine-gun';
@@ -1603,7 +1790,11 @@ export class Arena {
       const isRocket = weapon === 'orange';
       const isArrow = shot?.kind === 'arrow';
       const isShard = shot?.kind === 'ice' || weapon === 'glass';
-      orb.visible = !!shot && !isBullet && !isCannonball && !isKnife && !isRocket && !isArrow && shot.kind !== 'hook' && shot.kind !== 'harpoon' && shot.kind !== 'bee' && !isShard;
+      const specialKind = !shot ? '' : weapon === 'acid' || shot.kind === 'acid' ? 'acid'
+        : shot.kind === 'potion' ? 'potion' : shot.kind === 'lava' ? 'lava'
+          : weapon === 'cactus' ? 'thorn' : weapon === 'seed' ? 'seed' : '';
+      const hasSpecial = !!shot && !!specialKind;
+      orb.visible = !!shot && !hasSpecial && !isBullet && !isCannonball && !isKnife && !isRocket && !isArrow && shot.kind !== 'hook' && shot.kind !== 'harpoon' && shot.kind !== 'bee' && !isShard;
       shard.visible = !!shot && isShard;
       streak.visible = !!shot && shot.kind !== 'hook' && !isKnife && !isArrow && !this.lowEffects && !this.reducedMotion.matches;
       hook.visible = !!shot && (shot.kind === 'hook' || shot.kind === 'harpoon');
@@ -1612,7 +1803,8 @@ export class Arena {
       cannonball.visible = !!shot && isCannonball;
       knife.visible = !!shot && isKnife;
       rocket.visible = !!shot && isRocket;
-      arrow.visible = !!shot && isArrow;
+      arrow.visible = !!shot && isArrow && !hasSpecial;
+      special.visible = hasSpecial;
       if (shot) {
         const owner = w.balls[shot.owner];
         const height = shot.weapon === 'cannon-turret' ? 0.58 : owner?.radius ? owner.radius + 0.14 : 0.35;
@@ -1636,6 +1828,14 @@ export class Arena {
         knife.position.set(shot.x, height, shot.y); knife.rotation.y = yaw;
         rocket.position.set(shot.x, height, shot.y); rocket.rotation.y = yaw;
         arrow.position.set(shot.x, height, shot.y); arrow.rotation.y = yaw;
+        special.position.set(shot.x, height, shot.y); special.rotation.y = yaw;
+        special.children.forEach(variant => { variant.visible = variant.name === specialKind; });
+        const specialCore = special.getObjectByName('special-core') as THREE.Mesh | undefined;
+        if (specialCore) {
+          const coreMaterial = specialCore.material as THREE.MeshStandardMaterial;
+          coreMaterial.color.set(shot.color ?? '#b5dc68');
+          if ('emissive' in coreMaterial) coreMaterial.emissive.set(shot.color ?? '#b5dc68');
+        }
         const rocketBody = rocket.children[0] as THREE.Mesh;
         (rocketBody.material as THREE.MeshStandardMaterial).color.set(shot.color ?? '#de7a43');
         const knifeBlade = knife.children[2] as THREE.Mesh | undefined;
