@@ -27,8 +27,8 @@ export interface Ball {
   reforgeActive: boolean; reforgeDamage: number; reforgeAngle: number; reforgeTouching: boolean; reforgeNextHitAt: number[];
 }
 export interface ChessPathSegment { x1: number; y1: number; x2: number; y2: number; }
-export interface BattleEvent { type: 'wall' | 'hit' | 'power' | 'beam' | 'shot' | 'damage'; x: number; y: number; color?: string; radius?: number; axis?: 'x' | 'y'; amount?: number; }
-export interface Projectile { x: number; y: number; vx: number; vy: number; owner: number; ttl: number; damage?: number; radius?: number; color?: string; burstId?: number; kind?: 'hook' | 'ice'; slowFactor?: number; slowDuration?: number; }
+export interface BattleEvent { type: 'wall' | 'hit' | 'impact' | 'power' | 'beam' | 'shot' | 'damage'; x: number; y: number; color?: string; radius?: number; axis?: 'x' | 'y'; angle?: number; weapon?: string; owner?: number; elevation?: number; amount?: number; }
+export interface Projectile { x: number; y: number; vx: number; vy: number; owner: number; ttl: number; damage?: number; radius?: number; color?: string; weapon?: string; burstId?: number; kind?: 'hook' | 'ice'; slowFactor?: number; slowDuration?: number; }
 export interface LaserLine { axis: 'x' | 'y'; at: number; start: number; end: number; owner: number; color: string; ttl: number; warningUntil: number; nextHitAt: Record<string, number>; }
 export interface WebTrap { x: number; y: number; owner: number; radius: number; color: string; ttl: number; createdAt: number; hitSlots: number[]; nextDamageAt: Record<string, number>; }
 export interface SpikeTrap { x: number; y: number; owner: number; radius: number; color: string; ttl: number; }
@@ -182,7 +182,6 @@ function activateWallPower(w: World, ball: Ball, axis: 'x' | 'y') {
   } else if (kind(ball) === 'orange') {
     ball.abilityReadyAt = w.tick + ticks(4);
     fireProjectiles(w, ball, enemy, { speed: 15, damage: 7, radius: 0.2, color: '#ff9566', ttl: 1.6 });
-    w.events.push({ type: 'shot', x: ball.x, y: ball.y, color: '#ff9566' });
   } else if (kind(ball) === 'laser') {
     ball.abilityReadyAt = w.tick + ticks(1.5);
     const owner = w.balls.indexOf(ball), side = Math.sign(axis === 'x' ? ball.x : ball.y) || 1;
@@ -208,7 +207,6 @@ function activateWallPower(w: World, ball: Ball, axis: 'x' | 'y') {
   } else if (kind(ball) === 'cannon') {
     ball.abilityReadyAt = w.tick + ticks(3.4);
     fireProjectiles(w, ball, enemy, { speed: 13.5, damage: 4, radius: 0.24, color: '#ff745d', ttl: 1.8, spread: 0.2, count: 3 });
-    w.events.push({ type: 'shot', x: ball.x, y: ball.y, color: '#ff745d' });
   }
 }
 
@@ -220,24 +218,42 @@ function spawnGlassShards(w: World, ball: Ball) {
   w.shardHitCounts[String(burstId)] = {};
   for (let shard = 0; shard < 6 && w.projectiles.length < 32; shard++) {
     const angle = shard / 6 * Math.PI * 2;
-    w.projectiles.push({ x: ball.x, y: ball.y, vx: Math.cos(angle) * 13, vy: Math.sin(angle) * 13,
-      owner, ttl: ticks(1.5), damage: 3, radius: 0.14, color: '#b7f2ed', burstId });
+    w.projectiles.push({ x: ball.x + Math.cos(angle) * ball.radius * 0.82, y: ball.y + Math.sin(angle) * ball.radius * 0.82,
+      vx: Math.cos(angle) * 13, vy: Math.sin(angle) * 13, owner, ttl: ticks(1.5), damage: 3, radius: 0.14,
+      color: '#b7f2ed', weapon: 'glass', burstId });
   }
-  w.events.push({ type: 'shot', x: ball.x, y: ball.y, color: '#b7f2ed', radius: 1.4 });
+  w.events.push({ type: 'shot', x: ball.x, y: ball.y, color: '#b7f2ed', radius: 1.4,
+    weapon: 'glass', owner, elevation: ball.radius + 0.14 });
 }
 
 function fireProjectiles(w: World, ball: Ball, enemy: Ball, options: { speed: number; damage: number; radius: number; color: string; ttl: number; spread?: number; count?: number; kind?: Projectile['kind']; slowFactor?: number; slowDuration?: number }) {
   const dx = enemy.x - ball.x, dy = enemy.y - ball.y;
   const angle = Math.atan2(dy, dx), count = options.count ?? 1, spread = options.spread ?? 0;
   const owner = w.balls.indexOf(ball);
+  const weapon = ball.abilityId ?? options.kind ?? 'projectile';
   for (let shot = 0; shot < count && w.projectiles.length < 32; shot++) {
     const offset = count === 1 ? 0 : (shot - (count - 1) / 2) * spread;
     const heading = angle + offset;
-    w.projectiles.push({ x: ball.x, y: ball.y, vx: Math.cos(heading) * options.speed,
+    const lateral = count > 1 ? (shot - (count - 1) / 2) * 0.3
+      : weapon === 'machine-gun' ? (ball.machineAmmo % 2 ? -0.22 : 0.22)
+        : weapon === 'thief' ? (Math.floor(w.tick / ticks(0.5)) % 2 ? -0.22 : 0.22) : 0;
+    const weaponReach = weapon === 'thief' || weapon === 'hook' ? 1.82 : 1.45;
+    const muzzleDistance = Math.max(ball.radius + 0.14, weaponReach);
+    const x = ball.x + Math.cos(angle) * muzzleDistance - Math.sin(angle) * lateral;
+    const y = ball.y + Math.sin(angle) * muzzleDistance + Math.cos(angle) * lateral;
+    w.projectiles.push({ x, y, vx: Math.cos(heading) * options.speed,
       vy: Math.sin(heading) * options.speed, owner, ttl: ticks(options.ttl),
-      damage: options.damage, radius: options.radius, color: options.color, kind: options.kind,
+      damage: options.damage, radius: options.radius, color: options.color, weapon, kind: options.kind,
       slowFactor: options.slowFactor, slowDuration: options.slowDuration });
+    w.events.push({ type: 'shot', x, y, angle: heading, color: options.color, radius: options.radius,
+      weapon, owner, elevation: ball.radius + 0.14 });
   }
+}
+
+function emitProjectileImpact(w: World, shot: Projectile, target: Ball, x: number, y: number) {
+  w.events.push({ type: 'impact', x, y, color: shot.color ?? '#ff9566', radius: shot.radius ?? 0.2,
+    angle: Math.atan2(shot.vy, shot.vx), weapon: shot.weapon ?? shot.kind ?? 'projectile', owner: shot.owner,
+    elevation: target.radius + 0.04 });
 }
 
 function releaseContacts(w: World) {
@@ -591,7 +607,6 @@ function timedPowers(w: World) {
       ball.machineAmmo--;
       ball.machineNextShotAt = w.tick + ticks(0.2);
       if (ball.machineAmmo === 0) ball.machineReloadUntil = w.tick + ticks(1.5);
-      w.events.push({ type: 'shot', x: ball.x, y: ball.y, color: '#ff9ee8' });
       continue;
     }
     if (kind(ball) === 'thief') {
@@ -601,14 +616,12 @@ function timedPowers(w: World) {
       const interval = 1.1 - progress * 0.7;
       ball.abilityReadyAt = w.tick + ticks(interval);
       fireProjectiles(w, ball, enemy, { speed: 17, damage: 5, radius: 0.16, color: '#d7a5f4', ttl: 1.5 });
-      w.events.push({ type: 'shot', x: ball.x, y: ball.y, color: '#d7a5f4' });
       continue;
     }
     if (kind(ball) === 'hook') {
       if (w.tick < ball.abilityReadyAt || Math.hypot(enemy.x - ball.x, enemy.y - ball.y) > 12) continue;
       ball.abilityReadyAt = w.tick + ticks(4);
       fireProjectiles(w, ball, enemy, { speed: 18, damage: 5, radius: 0.2, color: '#c49a72', ttl: 12 / 18, kind: 'hook' });
-      w.events.push({ type: 'shot', x: ball.x, y: ball.y, color: '#c49a72' });
       continue;
     }
     if (kind(ball) === 'burst') {
@@ -633,6 +646,11 @@ function timedPowers(w: World) {
         ball.beamUntil = w.tick + ticks(1.05);
         ball.beamNextDamageAt = w.tick;
         w.events.push({ type: 'beam', x: ball.x, y: ball.y, color: '#48eaff' });
+        const beamAngle = Math.atan2(enemy.y - ball.y, enemy.x - ball.x);
+        const muzzle = ball.radius + 0.14;
+        w.events.push({ type: 'shot', x: ball.x + Math.cos(beamAngle) * muzzle,
+          y: ball.y + Math.sin(beamAngle) * muzzle, angle: beamAngle, color: '#48eaff',
+          weapon: 'beam', owner, elevation: ball.radius + 0.14 });
       }
       if (ball.beamUntil > w.tick) {
         if (w.tick >= ball.beamNextDamageAt) {
@@ -686,7 +704,6 @@ function timedPowers(w: World) {
       case 'machine':
         ball.abilityReadyAt = w.tick + ticks(1.15);
         fireProjectiles(w, ball, enemy, { speed: 19, damage: 4, radius: 0.17, color: '#ff9ee8', ttl: 1.25 });
-        w.events.push({ type: 'shot', x: ball.x, y: ball.y, color: '#ff9ee8' });
         break;
     }
   }
@@ -759,7 +776,7 @@ function updateArenaHazards(w: World) {
       const angle = shard / 8 * Math.PI * 2;
       w.projectiles.push({ x: bomb.x, y: bomb.y, vx: Math.cos(angle) * 14, vy: Math.sin(angle) * 14,
         owner: bomb.owner, ttl: ticks(1.25), damage: 4, radius: 0.18, color: bomb.color,
-        burstId, kind: 'ice', slowFactor: 0.75, slowDuration: 1 });
+        weapon: 'ice', burstId, kind: 'ice', slowFactor: 0.75, slowDuration: 1 });
     }
     w.events.push({ type: 'power', x: bomb.x, y: bomb.y, color: bomb.color, radius: 2.3 });
   }
@@ -776,9 +793,11 @@ function moveProjectiles(w: World) {
     for(const enemy of enemies){
       const t = Math.max(0, Math.min(1, ((enemy.x - x) * dx + (enemy.y - y) * dy) / (dx * dx + dy * dy || 1)));
       if (Math.hypot(enemy.x - (x + t * dx), enemy.y - (y + t * dy)) <= enemy.radius + (shot.radius ?? 0.2)) {
+        const impactX = x + t * dx, impactY = y + t * dy;
         if (shot.kind === 'hook') {
           const owner = w.balls[shot.owner];
           damage(w, enemy, shot.damage ?? 5, shot.color ?? '#c49a72');
+          emitProjectileImpact(w, shot, enemy, impactX, impactY);
           if (owner?.hp && owner.hp > 0) {
             const orbitAngle = Math.atan2(enemy.y - owner.y, enemy.x - owner.x);
             w.hookTethers.push({ owner: shot.owner, target: w.balls.indexOf(enemy), expiresAt: w.tick + ticks(0.8),
@@ -793,11 +812,16 @@ function moveProjectiles(w: World) {
           group[enemy.id] = count + 1;
           if (count < 3) {
             damage(w, enemy, shot.damage ?? 3, shot.color ?? '#b7f2ed');
+            emitProjectileImpact(w, shot, enemy, impactX, impactY);
             if (shot.kind === 'ice' && shot.slowFactor && shot.slowDuration)
               applySlow(w, enemy, `ice:${shot.burstId}`, shot.slowFactor, shot.slowDuration);
             w.hits++;
           }
-        } else damage(w, enemy, shot.damage ?? 7, shot.color ?? '#ff9566');
+        } else {
+          damage(w, enemy, shot.damage ?? 7, shot.color ?? '#ff9566');
+          emitProjectileImpact(w, shot, enemy, impactX, impactY);
+          w.hits++;
+        }
         return false;
       }
     }
@@ -835,6 +859,8 @@ const axeCuttingEdge: readonly (readonly [number, number])[] = [
   [-1.14, 0.25], [-0.96, 0.55], [-0.57, 0.43],
 ];
 
+const AXE_MODEL_SCALE = 1.28;
+
 function updateBladeAttacks(w: World) {
   for (let ownerSlot = 0; ownerSlot < w.balls.length; ownerSlot++) {
     const blade = w.balls[ownerSlot];
@@ -866,7 +892,9 @@ function updateBladeAttacks(w: World) {
       blade.bladeNextHitAt[targetSlot] = w.tick + ticks(0.4);
       damage(w, target, 6, '#e9f2fa');
       w.hits++;
-      w.events.push({ type: 'hit', x: impact.x, y: impact.y, color: '#e9f2fa', radius: 0.42 });
+      w.events.push({ type: 'hit', x: impact.x, y: impact.y, color: '#e9f2fa', radius: 0.42, weapon: 'blade' });
+      w.events.push({ type: 'impact', x: impact.x, y: impact.y, color: '#e9f2fa', radius: 0.32,
+        angle: Math.atan2(target.y - blade.y, target.x - blade.x), weapon: 'blade', owner: ownerSlot, elevation: target.radius + 0.04 });
     }
   }
 }
@@ -875,8 +903,8 @@ function axeEdgeAt(ball: Ball, angle: number, localX: number, localY: number) {
   // Match the rendered handle from (0.19, 0.98) to (0.56, 1.86),
   // then rotate its blade around the ball in the arena's x/y plane.
   const handleLength = Math.hypot(0.37, 0.88);
-  const x = 0.56 - localX * 0.88 / handleLength + localY * 0.37 / handleLength;
-  const y = 1.86 + localX * 0.37 / handleLength + localY * 0.88 / handleLength;
+  const x = (0.56 - localX * 0.88 / handleLength + localY * 0.37 / handleLength) * AXE_MODEL_SCALE;
+  const y = (1.86 + localX * 0.37 / handleLength + localY * 0.88 / handleLength) * AXE_MODEL_SCALE;
   const cosine = Math.cos(angle), sine = Math.sin(angle);
   return { x: ball.x + x * cosine - y * sine, y: ball.y + x * sine + y * cosine };
 }
@@ -922,7 +950,9 @@ function updateAxeAttacks(w: World) {
       const damageAmount = 12;
       damage(w, target, damageAmount, '#dce5f2');
       w.hits++;
-      w.events.push({ type: 'hit', x: impact.x, y: impact.y, color: '#dce5f2', radius: 0.58 });
+      w.events.push({ type: 'hit', x: impact.x, y: impact.y, color: '#dce5f2', radius: 0.58, weapon: 'axe' });
+      w.events.push({ type: 'impact', x: impact.x, y: impact.y, color: '#dce5f2', radius: 0.38,
+        angle: Math.atan2(target.y - axe.y, target.x - axe.x), weapon: 'axe', owner: ownerSlot, elevation: target.radius + 0.04 });
     }
   }
 }

@@ -470,6 +470,19 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .header-coin>strong{color:#e7f2d7;font-size:14px}
 .header-coin>span{color:#9eada2;font-size:8px;letter-spacing:.09em}
 @media(max-width:620px){.header-coin{gap:6px;padding:7px 8px}.header-coin>span{font-size:7px}.header-coin>strong{font-size:13px}}
+
+/* Keep the game name present in every screen and give the live arena its own clear title. */
+.brand{width:auto;height:44px;flex:0 0 auto;justify-content:flex-start;gap:12px;letter-spacing:0}
+.brand-name{display:flex;align-items:baseline;gap:5px;color:#e9f0e8;font-family:"Press Start 2P",ui-monospace,monospace;font-size:9px;font-weight:400;letter-spacing:.045em;white-space:nowrap}
+.brand-name i,.battle-wordmark i{color:var(--accent);font-size:.72em;font-style:normal;letter-spacing:.12em}
+.battle-wordmark{position:absolute;z-index:2;top:53px;left:50%;display:flex;align-items:center;gap:7px;padding:8px 11px;transform:translateX(-50%);border:1px solid #c9e98a2b;border-radius:6px;background:#0c120fcc;box-shadow:0 8px 22px #0004,inset 0 1px #ffffff0c;color:#eaf0e6;font-family:"Press Start 2P",ui-monospace,monospace;font-size:8px;letter-spacing:.045em;pointer-events:none;white-space:nowrap}
+.battle:has(.home-overlay:not([hidden])) .battle-wordmark,.battle:has(.selection-overlay:not([hidden])) .battle-wordmark{display:none}
+@media(max-width:620px){
+  .brand{height:36px;gap:8px}
+  .brand-symbol{width:32px;height:32px;border-radius:10px}
+  .brand-name{gap:3px;font-size:7px}
+  .battle-wordmark{top:48px;padding:7px 9px;font-size:7px}
+}
 .home-heading-meta{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:3px}
 .home-heading-meta .mode{min-height:0;gap:7px;padding:0;border:0;border-radius:0;background:transparent;color:#9aa79e;font-size:8px;font-weight:650;letter-spacing:1.1px;white-space:nowrap}
 .home-heading-meta .mode span{width:5px;height:5px;box-shadow:0 0 0 3px #c9e98a12}
