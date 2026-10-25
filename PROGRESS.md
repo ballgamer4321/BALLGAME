@@ -18,7 +18,7 @@ Aktualizacja: 2026-10-25. Etap 7 — oprawa i telefony: IN_PROGRESS. Etapy 1–6
 - Lokalna walka, multiplayer 1v1/2v2, bot, 24 dostępne kule ze zdolnościami, celowanie, rewanże, profil Firebase, sklep i kolekcja kosmetyczna.
 - Modele dostępnych kulek mają charakterystyczne sylwetki. Topór ma drewniany trzonek, zakrzywione metalowe ostrze i własne trafienia; przy niskim HP przyspiesza zgodnie z inspiracją Robloxową wersją. Pięć kulek — Wiązka, Pryzmat, Taran, Karabin i Pulsar — wycofano tymczasowo z katalogu, wyboru, sklepu i ofert meczowych, aby zastąpić je nowymi.
 - Ostrze topora działa teraz jako osobna broń: krąży przy ziemi, trafia wroga niezależnie od zderzenia kulek, a przy utracie HP obraca się szybciej i zadaje do 12 obrażeń. Obrażenia zwykłego zderzenia pozostają bez bonusu topora.
-- Główny ekran ma tytuł BALL VS BALL, przyciemnioną arenę i kompaktowy panel trybów. Usunięto branding „Orbita: Starcie”, licznik monet przeniesiono do prawego górnego rogu, a znacznik wyboru trybu umieszczono nad kartą menu. Pojawianie się menu, kart, tła i ikony kuli jest animowane, z obsługą `prefers-reduced-motion`. Font Press Start 2P i licencja OFL są dołączone lokalnie.
+- Główny ekran ma tytuł BALL VS BALL, przyciemnioną arenę i kompaktowy panel trybów. Usunięto branding „Orbita: Starcie”, licznik monet przeniesiono do prawego górnego rogu, a znacznik wyboru trybu umieszczono nad kartą menu. Tytuły i opisy trybów są krótsze i bardziej dynamiczne. Pojawianie się menu, kart, tła i ikony kuli jest animowane, z obsługą `prefers-reduced-motion`. Font Press Start 2P i licencja OFL są dołączone lokalnie.
 - Broń się obraca lub śledzi przeciwnika; odłamki zastępują pulsujące efekty mocy. Pauza i reduced motion ograniczają ruch.
 
 ## Weryfikacja i wdrożenie
