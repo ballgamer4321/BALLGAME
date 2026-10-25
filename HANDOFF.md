@@ -4,7 +4,7 @@ Projekt: `C:\Users\antre\Desktop\ball game`; GitHub `https://github.com/ballgame
 
 ## Stan i aktywne zadanie
 
-Etapy 1–6 i 8–9: DONE. Etap 7 pozostaje IN_PROGRESS — brak ręcznego QA 360×800/landscape i pomiaru FPS. Partia 2/6 jest zakończona: roster 24 kulek, 69/69 testów, TypeScript, build i `git diff --check` przechodzą. Ostatnia zmiana UI usuwa branding „Orbita: Starcie” i dodaje animowane wejście menu oraz subtelny ruch. Build ostrzega o chunka Three.js 510,90 kB. Zmiany zapisane lokalnie; nie pushować ani nie wdrażać. Statystyki są autorskim balansem do areny 20×20.
+Etapy 1–6 i 8–9: DONE. Etap 7 pozostaje IN_PROGRESS — brak ręcznego QA 360×800/landscape i pomiaru FPS. Partia 2/6 jest zakończona: roster 24 kulek, 69/69 testów, TypeScript, build i `git diff --check` przechodzą. Ostatnie zmiany UI usuwają branding „Orbita: Starcie”, dodają animowane wejście menu i przenoszą licznik monet do prawego górnego rogu. Build ostrzega o chunka Three.js 510,90 kB. Zmiany zapisane lokalnie; nie pushować ani nie wdrażać. Statystyki są autorskim balansem do areny 20×20.
 
 ## Uruchomienie i weryfikacja
 
