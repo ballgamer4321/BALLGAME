@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 6770)
+Total output lines: 311
+
 import type { Rooms } from '../server/rooms';
 import { MATCH_BALLS } from '../shared/config';
 import { BALL_CRATE_COST, BALL_SHOP, COSMETICS } from '../shared/progression';
@@ -57,8 +60,8 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     const ballList=el('ball-shop');
     ballList.replaceChildren();
     el('collection-tabs').hidden=!progress;
-    pickEl<HTMLButtonElement>('ball-shop-tab').setAttribute('aria-pressed',String(collectionSection==='balls'));
-    pickEl<HTMLButtonElement>('cosmetic-shop-tab').setAttribute('aria-pressed',String(collectionSection==='cosmetics'));
+    el<HTMLButtonElement>('ball-shop-tab').setAttribute('aria-pressed',String(collectionSection==='balls'));
+    el<HTMLButtonElement>('cosmetic-shop-tab').setAttribute('aria-pressed',String(collectionSection==='cosmetics'));
     ballList.hidden=collectionSection!=='balls';
     el('ball-shop-layout').hidden=collectionSection!=='balls';
     list.hidden=collectionSection!=='cosmetics';
@@ -78,102 +81,7 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     for(const ball of BALL_SHOP){
       const owned=progress.ownedBalls.includes(ball.id);
       const card=document.createElement('article');card.className='ball-shop-card';
-      card.innerHTML=`<span class="cosmetic-swatch" style="--cosmetic:${ball.color}"></span><div class="ball-shop-copy"><strong>${ball.name}</strong><small>${ball.trigger.toUpperCase()}</small><p>${ball.ability}</p><p class="ball-shop-weakness">Słabość: ${ball.weakness}</p></div>`;
-      const ownership=document.createElement('span');ownership.className=owned?'ball-unlock-status is-owned':'ball-unlock-status';
-      ownership.textContent=owned?'✓ Posiadana':'W skrzynce';
-      card.append(ownership);ballList.append(card);
-    }
-    for(const cosmetic of COSMETICS){
-      const owned=progress.ownedCosmetics.includes(cosmetic.id);
-      const equipped=progress.equippedCosmetic===cosmetic.id;
-      const card=document.createElement('article');card.className='cosmetic-card';
-      card.innerHTML=`<span class="cosmetic-swatch" style="--cosmetic:${cosmetic.color}"></span><div><strong>${cosmetic.name}</strong><p>${cosmetic.description}</p></div>`;
-      const button=document.createElement('button');button.type='button';button.className='cosmetic-action';
-      button.textContent=equipped?'Używany':owned?'Użyj':`Odblokuj · ${cosmetic.cost} ◈`;
-      button.disabled=!isProfileOnline()||equipped||(!owned&&progress.coins<cosmetic.cost);
-      button.onclick=async()=>{
-        button.disabled=true;el('collection-note').textContent='Zapisuję…';
-        try{if(owned)await equipCosmetic(cosmetic.id);else await buyCosmetic(cosmetic.id);renderCollection();}
-        catch(error){el('collection-note').textContent=error instanceof Error?error.message:'Nie udało się zapisać kosmetyku.';button.disabled=false;}
-      };
-      card.append(button);list.append(card);
-    }
-  }
-  el<HTMLButtonElement>('open-ball-crate').onclick=async()=>{
-    if(crateOpening)return;
-    crateOpening=true;
-    const crate=el<HTMLElement>('ball-crate');
-    const reveal=el<HTMLElement>('crate-reveal');
-    crate.classList.remove('is-opening');void crate.offsetWidth;crate.classList.add('is-opening');
-    reveal.hidden=true;
-    el('collection-note').textContent='Skrzynka się otwiera…';
-    let finalMessage='';
-    try{
-      const {ball}=await openBallCrate();
-      const orb=document.createElement('span');orb.className='crate-reveal-orb';orb.style.setProperty('--orb',ball.color);orb.setAttribute('aria-hidden','true');
-      const copy=document.createElement('div');copy.className='crate-reveal-copy';
-      const eyebrow=document.createElement('small');eyebrow.textContent='NOWA KULKA';
-      const name=document.createElement('strong');name.textContent=ball.name;
-      const ability=document.createElement('span');ability.textContent=ball.ability;
-      copy.append(eyebrow,name,ability);reveal.replaceChildren(orb,copy);reveal.hidden=false;
-      finalMessage=`Odblokowano ${ball.name}. Zapisano w kolekcji.`;
-    }catch(error){finalMessage=error instanceof Error?error.message:'Nie udało się otworzyć skrzynki.';}
-    finally{
-      crateOpening=false;crate.classList.remove('is-opening');renderCollection();
-      el('collection-note').textContent=finalMessage||getProfileMessage();
-    }
-  };
-  window.addEventListener('orbita-profile-updated',renderCollection);
-  el('open-collection').onclick=()=>{el('profile-strip').hidden=true;el('network-status').hidden=true;el('mode-options').hidden=true;el('join-controls').hidden=true;el('room-actions').hidden=true;el('collection-panel').hidden=false;renderCollection();};
-  el('collection-back').onclick=()=>{el('collection-panel').hidden=true;el('profile-strip').hidden=false;el('network-status').hidden=false;el('mode-options').hidden=false;el('join-controls').hidden=!onlineConfigured;};
-  el('ball-shop-tab').onclick=()=>{collectionSection='balls';renderCollection();};
-  el('cosmetic-shop-tab').onclick=()=>{collectionSection='cosmetics';renderCollection();};
-  void refreshProfile().catch(()=>renderCollection());
-  function setAngleDegrees(degrees:number){
-    const value=Math.max(-180,Math.min(180,Math.round(degrees)));
-    angleDegrees=value;
-    angleOutput.textContent=`${value}°`;
-    onAimChange(value*Math.PI/180,currentSlot);
-  }
-  function renderPicker(){
-    const data=currentState;
-    const preparing=!!data && (data.phase==='select' || data.phase==='aim');
-    overlay.hidden=!preparing;
-    overlay.classList.toggle('is-aiming',!!data && data.phase==='aim');
-    overlay.querySelector('.selection-shell')!.classList.toggle('is-aiming',!!data && data.phase==='aim');
-    viewport.classList.toggle('selection-active',preparing);
-    if(!data || !preparing)return;
-    const chosen=data.players.filter(player=>player.chosen).length;
-    const myChoice=!!data.pick || choicePending;
-    const choosing=data.phase==='select'&&!myChoice;
-    const aiming=data.phase==='aim'&&!data.angleLocked&&!choicePending;
-    pickEl('selection-step-label').textContent=data.phase==='aim'?'KROK 2 / 2':'KROK 1 / 2';
-    pickEl('selection-step-title').textContent=data.phase==='aim'?'Ustaw kierunek':'Wybierz kulkę';
-    pickEl('selection-step-hint').textContent=data.phase==='aim'?'Przeciągnij po arenie od swojej kulki, a potem zablokuj kierunek.':'Wybierz jedną z trzech propozycji albo skorzystaj z kolekcji.';
-    pickEl('selection-players').innerHTML=data.players.map((player,i)=>`<div class="selection-player ${player.chosen?'is-chosen':''}"><span>${i===data.slot?'TY':player.bot?'BOT':`GRACZ ${i+1}`} <small>DRUŻYNA ${player.team+1}</small></span><b>${player.chosen?'WYBRANO':'WYBIERA…'}</b></div>`).join('');
-    pickEl('selection-tabs').hidden=!choosing;
-    pickEl<HTMLButtonElement>('offer-tab').setAttribute('aria-pressed',String(!collectionView));
-    const collectionTab=pickEl<HTMLButtonElement>('collection-tab');
-    collectionTab.disabled=data.collectionUsed;
-    collectionTab.setAttribute('aria-pressed',String(collectionView));
-    collectionTab.textContent=data.collectionUsed?'Kolekcja wykorzystana':'Moje kulki · raz na mecz';
-    const cards=pickEl('selection-cards');
-    const key=`${roundKey}|${choosing}|${collectionView}|${selectedId}|${data.pick}|${choicePending}`;
-    if(cardsKey!==key){
-      cardsKey=key;cards.replaceChildren();
-      if(choosing){
-        const ids=collectionView?data.ownedBalls:data.offer;
-        for(const id of ids){
-          const def=MATCH_BALLS.find(ball=>ball.id===id)!;
-          const button=document.createElement('button');button.type='button';button.className='ball-card';
-          button.setAttribute('aria-pressed',String(selectedId===id));
-          button.innerHTML=`<span class="ball-card-orb" style="--orb:${def.color}"></span><strong>${def.name}</strong><small>${def.trigger.toUpperCase()} · ${def.hp} HP</small><span class="ball-card-ability">${def.ability}</span><span class="ball-card-weakness">Słabość: ${def.weakness}</span>`;
-          button.onclick=()=>{selectedId=id;pickerError='';renderPicker();};cards.append(button);
-        }
-      }else{
-        const name=MATCH_BALLS.find(ball=>ball.id===data.pick)?.name;
-        const wait=document.createElement('p');wait.className='selection-wait';
-        wait.textContent=data.phase==='aim'?'Kulki wybrane. Ustaw kierunek.':name?`${name} wybrany. Czekamy na pozostałych graczy…`:'Wybór zapisany. Czekamy na pozostałych graczy…';cards.append(wait);
+      card.innerHTML=`<span class="cosmetic-s…1770 tokens truncated…. Ustaw kierunek.':name?`${name} wybrany. Czekamy na pozostałych graczy…`:'Wybór zapisany. Czekamy na pozostałych graczy…';cards.append(wait);
       }
     }
     cards.hidden=data.phase==='aim';
@@ -308,3 +216,4 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     setAngleDegrees(angle*180/Math.PI);
   }, canAim: () => canAim };
 }
+
