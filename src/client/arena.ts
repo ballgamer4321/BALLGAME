@@ -9,7 +9,9 @@ export class Arena {
   private camera = new THREE.OrthographicCamera(-14, 14, 11, -11, 0.1, 100);
   private balls: THREE.Group[] = [];
   private trails: THREE.Mesh[][] = [];
-  private cosmeticRings: THREE.Mesh[] = [];
+  private ballBaseColors: string[] = [];
+  private cosmeticTints: THREE.Color[] = [];
+  private colorScratch = new THREE.Color();
   private previous: { x: number; y: number }[] = [];
   private flashes: { mesh: THREE.Mesh; life: number }[] = [];
   private damageBubbles: { sprite: THREE.Sprite; life: number; rise: number }[] = [];
@@ -77,21 +79,9 @@ export class Arena {
         new THREE.MeshPhysicalMaterial({ color: def.color, metalness: 0.45, roughness: 0.22,
           clearcoat: 1, clearcoatRoughness: 0.15 }));
       orb.castShadow = true; orb.receiveShadow = true; group.add(orb);
-      const band = new THREE.Mesh(new THREE.TorusGeometry(def.radius * 1.015, 0.045, 8, 64),
-        new THREE.MeshStandardMaterial({ color: index ? 0xc0fff5 : 0xffe6bc, emissive: def.color, emissiveIntensity: 0.35 }));
-      band.rotation.x = Math.PI / 2.8; group.add(band);
-      const band2 = band.clone(); band2.rotation.y = Math.PI / 2; group.add(band2);
-      const aura = new THREE.Mesh(new THREE.SphereGeometry(def.radius * 1.27, 20, 12),
-        new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: 0.15, wireframe: true, depthWrite: false }));
-      aura.visible = false; group.add(aura);
       const satellite = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8),
         new THREE.MeshBasicMaterial({ color: 0xff9dd5 }));
       satellite.visible = false; group.add(satellite);
-      const cosmeticRing = new THREE.Mesh(new THREE.TorusGeometry(def.radius * 1.55, 0.055, 8, 64),
-        new THREE.MeshBasicMaterial({ color: COSMETICS[0].color, transparent: true, opacity: 0.88, depthWrite: false }));
-      cosmeticRing.rotation.x = Math.PI / 2;
-      cosmeticRing.position.y = -def.radius + 0.08;
-      group.add(cosmeticRing); this.cosmeticRings.push(cosmeticRing);
       this.balls.push(group); this.scene.add(group);
       const trail: THREE.Mesh[] = [];
       for (let i = 0; i < 12; i++) {
@@ -169,18 +159,20 @@ export class Arena {
 
   setBallColor(index: number, color: string) {
     const group = this.balls[index];
+    if (!group) return;
+    this.ballBaseColors[index] = color;
     const orb = group.children[0] as THREE.Mesh;
-    (orb.material as THREE.MeshPhysicalMaterial).color.set(color);
-    for (const child of group.children.slice(1, 3)) (child as THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>).material.emissive.set(color);
+    this.colorScratch.set(color);
+    if (this.cosmeticTints[index]) this.colorScratch.lerp(this.cosmeticTints[index], 0.18);
+    (orb.material as THREE.MeshPhysicalMaterial).color.copy(this.colorScratch);
     for (const particle of this.trails[index]) (particle.material as THREE.MeshBasicMaterial).color.set(color);
   }
 
   setBallCosmetic(index: number, cosmeticId: string) {
-    const ring = this.cosmeticRings[index];
-    if (!ring) return;
+    if (!this.balls[index]) return;
     const cosmetic = COSMETICS.find(item => item.id === cosmeticId) ?? COSMETICS[0];
-    (ring.material as THREE.MeshBasicMaterial).color.set(cosmetic.color);
-    ring.visible = true;
+    this.cosmeticTints[index] = new THREE.Color(cosmetic.color);
+    if (this.ballBaseColors[index]) this.setBallColor(index, this.ballBaseColors[index]);
   }
 
   beforeStep(w: World) { this.previous = w.balls.map(b => ({ x: b.x, y: b.y })); }
@@ -231,10 +223,7 @@ export class Arena {
       const x = THREE.MathUtils.lerp(p.x, b.x, alpha), y = THREE.MathUtils.lerp(p.y, b.y, alpha);
       const group = this.balls[i]; group.position.set(x, b.radius + 0.04, y);
       group.scale.setScalar(b.hp <= 0 ? 0.35 : b.radius / BASIC_BALLS[i%2].radius);
-      const aura = group.children[3] as THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
-      aura.visible = b.shield > 0 || b.poisonedUntil > w.tick || b.echoUntil > w.tick || b.slowedUntil > w.tick;
-      aura.material.color.set(b.shield > 0 ? '#b8c9db' : b.poisonedUntil > w.tick ? '#76dd9a' : b.slowedUntil > w.tick ? '#82e9f4' : '#ff9dd5');
-      const satellite = group.children[4] as THREE.Mesh;
+      const satellite = group.children[1] as THREE.Mesh;
       satellite.visible = b.echoUntil > w.tick;
       if (satellite.visible && !this.reducedMotion.matches) satellite.position.set(Math.cos(w.tick * 0.18) * b.radius * 1.5, 0.2, Math.sin(w.tick * 0.18) * b.radius * 1.5);
       if (moving && !this.reducedMotion.matches) {

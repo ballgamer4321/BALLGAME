@@ -1,7 +1,7 @@
 export const COSMETICS = [
-  { id: 'aurora', name: 'Aurora', description: 'Miętowa obręcz wokół kulki.', color: '#8df2ca', cost: 0 },
-  { id: 'solar', name: 'Rozbłysk', description: 'Ciepła, złota obręcz.', color: '#ffc66e', cost: 25 },
-  { id: 'nebula', name: 'Mgławica', description: 'Fioletowa obręcz z kosmicznym blaskiem.', color: '#c3a0fa', cost: 50 },
+  { id: 'aurora', name: 'Aurora', description: 'Miętowy odcień kulki.', color: '#8df2ca', cost: 0 },
+  { id: 'solar', name: 'Rozbłysk', description: 'Złoty odcień kulki.', color: '#ffc66e', cost: 25 },
+  { id: 'nebula', name: 'Mgławica', description: 'Fioletowy odcień kulki.', color: '#c3a0fa', cost: 50 },
 ] as const;
 
 export type CosmeticId = typeof COSMETICS[number]['id'];

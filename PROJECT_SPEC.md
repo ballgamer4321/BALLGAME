@@ -87,7 +87,7 @@ Wszystkie nazwy, liczby i dokładne reguły poniżej są AUTORSKIE. Motywy truci
 | Pulsar / złoty rdzeń | Co 4 s fala, promień 3, obrażenia 8 po przekroczeniu frontu | Bliski dystans / atak dystansowy |
 | Szron / turkusowe odłamki | Co 3 s zostawia pole na 2 s, spowolnienie 25%, bez kumulacji | Kontrola ruchu / dystans |
 | Siewca / pomarańczowe segmenty | Ściana tworzy działko na 4 s, cooldown 5 s, maks. 1; pocisk co 1 s | Presja dystansowa / szybkie zbliżenie |
-| Echo / różowe podwójne obręcze | Co 6 s satelita na 2 s, jedno trafienie za 6 na wroga | Dodatkowy obszar kontaktu / tarcza i dystans |
+| Echo / różowy satelita | Co 6 s satelita na 2 s, jedno trafienie za 6 na wroga | Dodatkowy obszar kontaktu / tarcza i dystans |
 
 Nie zmieniać parametrów bez testów interakcji. Efekty są obiektami symulacji o ustalonym czasie życia i limitach liczby; rendering tylko odczytuje stan. Testy par wszystkich kulek na stałych seedach służą diagnostyce, nie dowodzą idealnego balansu.
 

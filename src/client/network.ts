@@ -54,7 +54,7 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
       const owned=progress.ownedCosmetics.includes(cosmetic.id);
       const equipped=progress.equippedCosmetic===cosmetic.id;
       const card=document.createElement('article');card.className='cosmetic-card';
-      card.innerHTML=`<span class="cosmetic-orbit" style="--cosmetic:${cosmetic.color}"></span><div><strong>${cosmetic.name}</strong><p>${cosmetic.description}</p></div>`;
+      card.innerHTML=`<span class="cosmetic-swatch" style="--cosmetic:${cosmetic.color}"></span><div><strong>${cosmetic.name}</strong><p>${cosmetic.description}</p></div>`;
       const button=document.createElement('button');button.type='button';button.className='cosmetic-action';
       button.textContent=equipped?'Używany':owned?'Użyj':`Odblokuj · ${cosmetic.cost} ◈`;
       button.disabled=!isProfileOnline()||equipped||(!owned&&progress.coins<cosmetic.cost);
