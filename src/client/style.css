@@ -424,7 +424,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .home-wordmark{z-index:1;animation:wordmark-arrive .72s cubic-bezier(.2,.75,.25,1) .08s both}
 .home-wordmark>span{text-shadow:0 3px 0 #1c2b20,0 0 32px #c9e98a28;animation:wordmark-light 6s ease-in-out 1s infinite alternate}
 .home-wordmark>small{color:#aebbb0}
-.home-heading::after{content:"27 KULEK   ·   4 TRYBY   ·   1–4 GRACZY"}
+.home-heading::after{content:"30 KULEK   ·   4 TRYBY   ·   1–4 GRACZY"}
 .home-shell{position:relative;z-index:1}
 .home-overlay:not([hidden]):not(.is-aiming):not(:has(#local-panel:not([hidden])))::before{
   position:absolute;z-index:0;inset:-10%;pointer-events:none;content:"";opacity:.8;

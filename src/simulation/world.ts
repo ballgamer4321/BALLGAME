@@ -31,10 +31,11 @@ export interface Ball {
 }
 export interface ChessPathSegment { x1: number; y1: number; x2: number; y2: number; }
 export interface BattleEvent { type: 'wall' | 'hit' | 'impact' | 'power' | 'beam' | 'shot' | 'damage'; x: number; y: number; color?: string; radius?: number; axis?: 'x' | 'y'; angle?: number; weapon?: string; owner?: number; elevation?: number; amount?: number; }
-export interface Projectile { x: number; y: number; vx: number; vy: number; owner: number; ttl: number; damage?: number; radius?: number; color?: string; weapon?: string; burstId?: number; kind?: 'hook' | 'ice'; slowFactor?: number; slowDuration?: number; }
+export interface Projectile { x: number; y: number; vx: number; vy: number; owner: number; ttl: number; damage?: number; radius?: number; color?: string; weapon?: string; burstId?: number; kind?: 'hook' | 'ice' | 'arrow'; bouncesLeft?: number; slowFactor?: number; slowDuration?: number; }
 export interface LaserLine { axis: 'x' | 'y'; at: number; start: number; end: number; owner: number; color: string; ttl: number; warningUntil: number; nextHitAt: Record<string, number>; }
 export interface WebTrap { x: number; y: number; owner: number; radius: number; color: string; ttl: number; createdAt: number; hitSlots: number[]; nextDamageAt: Record<string, number>; }
-export interface SpikeTrap { x: number; y: number; owner: number; radius: number; color: string; ttl: number; }
+export interface SpikeTrap { x: number; y: number; owner: number; radius: number; color: string; ttl: number; type?: 'poison' | 'heavy'; damage?: number; poison?: boolean; knockback?: number; }
+export interface CannonTurret { x: number; y: number; owner: number; hp: number; maxHp: number; color: string; ttl: number; nextShotAt: number; }
 export interface DiceTrap { x: number; y: number; owner: number; id: number; value: number; ttl: number; nextHitAt: Record<string, number>; }
 export interface IceBomb { x: number; y: number; owner: number; id: number; detonateAt: number; color: string; }
 export interface DamageZone { x: number; y: number; owner: number; radius: number; color: string; ttl: number; nextDamageAt: Record<string, number>; }
@@ -47,7 +48,7 @@ export interface World {
   hits: number; collisionLimitHits: number;
   projectiles: Projectile[];
   lasers: LaserLine[]; webs: WebTrap[]; spikes: SpikeTrap[]; damageZones: DamageZone[]; apples: ApplePickup[];
-  diceTraps: DiceTrap[]; iceBombs: IceBomb[]; hookTethers: HookTether[]; nextHazardId: number;
+  diceTraps: DiceTrap[]; iceBombs: IceBomb[]; cannonTurrets: CannonTurret[]; hookTethers: HookTether[]; nextHazardId: number;
   shardHitCounts: Record<string, Record<string, number>>; nextShardBurstId: number;
 }
 
@@ -74,7 +75,8 @@ export function createWorld(seed = 1, picks?: string[], angles?: number[]): Worl
       machineAmmo: 15, machineReloadUntil: 0, machineNextShotAt: 0,
       bladeCount: 1, bladeNextGrowAt: ticks(4), bladeAngle: 0, bladeNextHitAt: Array(defs.length).fill(0),
       glassNextBurstAt: 0, contactNextHitAt: {},
-      abilityReadyAt: def.id === 'chess' ? ticks(5) : 0, beamChargeUntil: 0, beamUntil: 0, beamNextDamageAt: 0,
+      abilityReadyAt: def.id === 'chess' ? ticks(5) : def.id === 'bow' ? ticks(1.2) : 0,
+      beamChargeUntil: 0, beamUntil: 0, beamNextDamageAt: 0,
       axeAngle: 0, axeNextHitAt: Array(defs.length).fill(0), form: 'standard' as const,
       vampireTargetId: null, vampireUntil: 0, vampireNextPulseAt: 0, vampirePulsesLeft: 0,
       cellGrowthLevel: 0, cellNextGrowAt: ticks(5), cellSplitTriggered: false,
@@ -86,7 +88,7 @@ export function createWorld(seed = 1, picks?: string[], angles?: number[]): Worl
   });
   return { seed, tick: 0, phase: 'running', balls, contacts: new Set(),
     events: [], winner: null, reason: null, hits: 0, collisionLimitHits: 0, projectiles: [], lasers: [], webs: [], spikes: [], damageZones: [], apples: [],
-    diceTraps: [], iceBombs: [], hookTethers: [], nextHazardId: 1,
+    diceTraps: [], iceBombs: [], cannonTurrets: [], hookTethers: [], nextHazardId: 1,
     shardHitCounts: {}, nextShardBurstId: 1 };
 }
 
@@ -220,6 +222,22 @@ function activateWallPower(w: World, ball: Ball, axis: 'x' | 'y') {
     if (owned.length >= 4) w.webs.splice(w.webs.indexOf(owned[0]), 1);
     w.webs.push({ x: ball.x, y: ball.y, owner, radius: 3, color: '#a9f775', ttl: ticks(6), createdAt: w.tick, hitSlots: [], nextDamageAt: {} });
     w.events.push({ type: 'power', x: ball.x, y: ball.y, color: '#a9f775', radius: 3 });
+  } else if (kind(ball) === 'big-spike') {
+    ball.abilityReadyAt = w.tick + ticks(0.8);
+    const owner = w.balls.indexOf(ball);
+    const owned = w.spikes.filter(spike => spike.owner === owner && spike.type === 'heavy');
+    if (owned.length >= 6) w.spikes.splice(w.spikes.indexOf(owned[0]), 1);
+    w.spikes.push({ x: ball.x, y: ball.y, owner, radius: 0.72, color: '#e9a36c', ttl: ticks(10),
+      type: 'heavy', damage: 9, poison: false, knockback: 7 });
+    w.events.push({ type: 'power', x: ball.x, y: ball.y, color: '#e9a36c', radius: 1.25 });
+  } else if (kind(ball) === 'cannon-turret') {
+    ball.abilityReadyAt = w.tick + ticks(2);
+    const owner = w.balls.indexOf(ball);
+    const owned = w.cannonTurrets.filter(turret => turret.owner === owner);
+    if (owned.length >= 3) w.cannonTurrets.splice(w.cannonTurrets.indexOf(owned[0]), 1);
+    w.cannonTurrets.push({ x: ball.x, y: ball.y, owner, hp: 8, maxHp: 8, color: '#ffa36b',
+      ttl: ticks(8), nextShotAt: w.tick });
+    w.events.push({ type: 'power', x: ball.x, y: ball.y, color: '#ffa36b', radius: 1.15 });
   } else if (kind(ball) === 'cannon') {
     ball.abilityReadyAt = w.tick + ticks(3.4);
     fireProjectiles(w, ball, enemy, { speed: 13.5, damage: 4, radius: 0.24, color: '#ff745d', ttl: 1.8, spread: 0.2, count: 3 });
@@ -242,11 +260,11 @@ function spawnGlassShards(w: World, ball: Ball) {
     weapon: 'glass', owner, elevation: ball.radius + 0.14 });
 }
 
-function fireProjectiles(w: World, ball: Ball, enemy: Ball, options: { speed: number; damage: number; radius: number; color: string; ttl: number; spread?: number; count?: number; kind?: Projectile['kind']; slowFactor?: number; slowDuration?: number }) {
+function fireProjectiles(w: World, ball: Ball, enemy: Ball, options: { speed: number; damage: number; radius: number; color: string; ttl: number; spread?: number; count?: number; kind?: Projectile['kind']; bouncesLeft?: number; slowFactor?: number; slowDuration?: number; origin?: { x: number; y: number }; weapon?: string }) {
   const dx = enemy.x - ball.x, dy = enemy.y - ball.y;
   const angle = Math.atan2(dy, dx), count = options.count ?? 1, spread = options.spread ?? 0;
   const owner = w.balls.indexOf(ball);
-  const weapon = ball.abilityId ?? options.kind ?? 'projectile';
+  const weapon = options.weapon ?? ball.abilityId ?? options.kind ?? 'projectile';
   for (let shot = 0; shot < count && w.projectiles.length < 32; shot++) {
     const offset = count === 1 ? 0 : (shot - (count - 1) / 2) * spread;
     const heading = angle + offset;
@@ -254,12 +272,13 @@ function fireProjectiles(w: World, ball: Ball, enemy: Ball, options: { speed: nu
       : weapon === 'machine-gun' ? (ball.machineAmmo % 2 ? -0.22 : 0.22)
         : weapon === 'thief' ? (Math.floor(w.tick / ticks(0.5)) % 2 ? -0.22 : 0.22) : 0;
     const weaponReach = weapon === 'thief' || weapon === 'hook' ? 1.82 : 1.45;
-    const muzzleDistance = Math.max(ball.radius + 0.14, weaponReach);
-    const x = ball.x + Math.cos(angle) * muzzleDistance - Math.sin(angle) * lateral;
-    const y = ball.y + Math.sin(angle) * muzzleDistance + Math.cos(angle) * lateral;
+    const muzzleDistance = options.origin ? 0.52 : Math.max(ball.radius + 0.14, weaponReach);
+    const origin = options.origin ?? ball;
+    const x = origin.x + Math.cos(angle) * muzzleDistance - Math.sin(angle) * lateral;
+    const y = origin.y + Math.sin(angle) * muzzleDistance + Math.cos(angle) * lateral;
     w.projectiles.push({ x, y, vx: Math.cos(heading) * options.speed,
       vy: Math.sin(heading) * options.speed, owner, ttl: ticks(options.ttl),
-      damage: options.damage, radius: options.radius, color: options.color, weapon, kind: options.kind,
+      damage: options.damage, radius: options.radius, color: options.color, weapon, kind: options.kind, bouncesLeft: options.bouncesLeft,
       slowFactor: options.slowFactor, slowDuration: options.slowDuration });
     w.events.push({ type: 'shot', x, y, angle: heading, color: options.color, radius: options.radius,
       weapon, owner, elevation: ball.radius + 0.14 });
@@ -626,6 +645,13 @@ function timedPowers(w: World) {
     }
     const enemy = other(w, ball);
     if (!enemy) continue;
+    if (kind(ball) === 'bow') {
+      if (w.tick < ball.abilityReadyAt) continue;
+      ball.abilityReadyAt = w.tick + ticks(2);
+      fireProjectiles(w, ball, enemy, { speed: 18, damage: 10, radius: 0.16, color: '#d9a76d', ttl: 4,
+        kind: 'arrow', bouncesLeft: 2 });
+      continue;
+    }
     if (kind(ball) === 'machine-gun') {
       if (ball.machineReloadUntil || w.tick < ball.machineNextShotAt) continue;
       if (ball.machineAmmo <= 0) { ball.machineReloadUntil = w.tick + ticks(1.5); continue; }
@@ -774,8 +800,16 @@ function updateArenaHazards(w: World) {
       const enemy = w.balls[slot];
       if (enemy.hp <= 0 || enemy.team === w.balls[spike.owner]?.team ||
           Math.hypot(enemy.x - spike.x, enemy.y - spike.y) > spike.radius + enemy.radius) continue;
-      damage(w, enemy, 4, spike.color);
-      applyPoison(w, enemy, spike.color);
+      damage(w, enemy, spike.damage ?? 4, spike.color);
+      if (spike.poison ?? spike.type !== 'heavy') applyPoison(w, enemy, spike.color);
+      if ((spike.knockback ?? 0) > 0) {
+        const dx = enemy.x - spike.x, dy = enemy.y - spike.y, distance = Math.hypot(dx, dy) || 1;
+        enemy.vx += dx / distance * (spike.knockback ?? 0);
+        enemy.vy += dy / distance * (spike.knockback ?? 0);
+        w.events.push({ type: 'impact', x: enemy.x, y: enemy.y, color: spike.color, radius: 0.55,
+          angle: Math.atan2(dy, dx), weapon: 'big-spike', owner: spike.owner, elevation: enemy.radius + 0.04 });
+      }
+      w.hits++;
       return false;
     }
     return spike.ttl > 0 && !!w.balls[spike.owner];
@@ -835,15 +869,55 @@ function updateArenaHazards(w: World) {
     w.events.push({ type: 'power', x: bomb.x, y: bomb.y, color: bomb.color, radius: 2.3 });
   }
   w.iceBombs = w.iceBombs.filter(bomb => w.tick < bomb.detonateAt && !!w.balls[bomb.owner]);
+  w.cannonTurrets = w.cannonTurrets.filter(turret => {
+    const owner = w.balls[turret.owner];
+    if (!owner || owner.hp <= 0 || turret.hp <= 0) return false;
+    turret.ttl--;
+    const target = other(w, owner);
+    if (target && w.tick >= turret.nextShotAt) {
+      turret.nextShotAt = w.tick + ticks(1);
+      fireProjectiles(w, owner, target, { speed: 20, damage: 2, radius: 0.15, color: turret.color, ttl: 1.5,
+        origin: turret, weapon: 'cannon-turret' });
+    }
+    return turret.ttl > 0;
+  });
 }
 
 function moveProjectiles(w: World) {
   w.projectiles = w.projectiles.filter(shot => {
+    const owner = w.balls[shot.owner];
+    if (!owner) return false;
     const x = shot.x, y = shot.y;
     shot.x += shot.vx * RULES.step; shot.y += shot.vy * RULES.step; shot.ttl--;
-    const enemies = w.balls.filter(ball=>ball.team!==w.balls[shot.owner].team && ball.hp>0);
+    if (shot.kind === 'arrow') {
+      const halfWidth = RULES.width / 2 - (shot.radius ?? 0.16), halfHeight = RULES.height / 2 - (shot.radius ?? 0.16);
+      let bounced = false;
+      if (shot.x < -halfWidth || shot.x > halfWidth) {
+        if ((shot.bouncesLeft ?? 0) <= 0) return false;
+        shot.x = Math.max(-halfWidth, Math.min(halfWidth, shot.x)); shot.vx *= -1;
+        shot.bouncesLeft = (shot.bouncesLeft ?? 0) - 1; bounced = true;
+      }
+      if (shot.y < -halfHeight || shot.y > halfHeight) {
+        if ((shot.bouncesLeft ?? 0) <= 0) return false;
+        shot.y = Math.max(-halfHeight, Math.min(halfHeight, shot.y)); shot.vy *= -1;
+        shot.bouncesLeft = (shot.bouncesLeft ?? 0) - 1; bounced = true;
+      }
+      if (bounced) w.events.push({ type: 'wall', x: shot.x, y: shot.y, color: shot.color, radius: 0.26 });
+    }
+    const enemies = w.balls.filter(ball=>ball.team!==owner.team && ball.hp>0);
     if (!enemies.length) return false;
     const dx = shot.x - x, dy = shot.y - y;
+    for (const turret of w.cannonTurrets) {
+      const turretOwner = w.balls[turret.owner];
+      if (!turretOwner || turretOwner.team === owner.team) continue;
+      const t = Math.max(0, Math.min(1, ((turret.x - x) * dx + (turret.y - y) * dy) / (dx * dx + dy * dy || 1)));
+      if (Math.hypot(turret.x - (x + t * dx), turret.y - (y + t * dy)) > 0.58 + (shot.radius ?? 0.2)) continue;
+      turret.hp -= shot.damage ?? 1;
+      w.events.push({ type: 'impact', x: turret.x, y: turret.y, color: turret.color, radius: 0.42,
+        angle: Math.atan2(shot.vy, shot.vx), weapon: 'cannon-turret', owner: shot.owner, elevation: 0.65 });
+      w.hits++;
+      return false;
+    }
     for(const enemy of enemies){
       const t = Math.max(0, Math.min(1, ((enemy.x - x) * dx + (enemy.y - y) * dy) / (dx * dx + dy * dy || 1)));
       if (Math.hypot(enemy.x - (x + t * dx), enemy.y - (y + t * dy)) <= enemy.radius + (shot.radius ?? 0.2)) {

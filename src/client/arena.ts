@@ -4,7 +4,7 @@ import { COSMETICS } from '../shared/progression';
 import type { World } from '../simulation/world';
 
 interface EnergyStrip { group: THREE.Group; core: THREE.Mesh; glow: THREE.Mesh; marker: THREE.Mesh; }
-interface ProjectileVisual { orb: THREE.Mesh; shard: THREE.Mesh; streak: THREE.Mesh; hook: THREE.Group; bullet: THREE.Group; cannonball: THREE.Group; knife: THREE.Group; rocket: THREE.Group; }
+interface ProjectileVisual { orb: THREE.Mesh; shard: THREE.Mesh; streak: THREE.Mesh; hook: THREE.Group; bullet: THREE.Group; cannonball: THREE.Group; knife: THREE.Group; rocket: THREE.Group; arrow: THREE.Group; }
 interface PowerSpark { mesh: THREE.Mesh; life: number; maxLife: number; vx: number; vz: number; spin: number; }
 interface DiceVisual { group: THREE.Group; pips: THREE.Mesh[]; }
 interface TimedGroup { group: THREE.Group; life: number; maxLife: number; }
@@ -505,6 +505,43 @@ function makeBallSignature(id: string, color: string) {
     const leaf = add(new THREE.SphereGeometry(0.16, 10, 8), new THREE.MeshStandardMaterial({ color: '#8bd36c', roughness: 0.48 }), [0.13, 0.49, 1.18]);
     leaf.scale.set(1.55, 0.28, 0.58); leaf.rotation.z = -0.32;
   }
+  if (id === 'big-spike') {
+    add(new THREE.TorusGeometry(0.58, 0.11, 8, 24), brass, [0, 0.18, 0.82], [Math.PI / 2, 0, 0]);
+    for (let index = 0; index < 5; index++) {
+      const angle = index / 5 * Math.PI * 2;
+      const spike = add(new THREE.ConeGeometry(index === 0 ? 0.25 : 0.18, index === 0 ? 0.88 : 0.64, 6),
+        index % 2 ? steel : accent, [Math.cos(angle) * 0.46, 0.3 + (index === 0 ? 0.08 : 0), 0.76 + Math.sin(angle) * 0.38]);
+      spike.rotation.z = Math.cos(angle) * 0.42;
+      spike.rotation.x = Math.sin(angle) * 0.42;
+    }
+    for (const side of [-1, 1]) add(new THREE.BoxGeometry(0.12, 0.16, 0.46), dark, [side * 0.36, 0.02, 0.67], [0, side * 0.3, 0]);
+  }
+  if (id === 'bow') {
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, -0.78, 1.08), new THREE.Vector3(0.4, -0.65, 1.08),
+      new THREE.Vector3(0.62, -0.3, 1.08), new THREE.Vector3(0.68, 0, 1.08),
+      new THREE.Vector3(0.62, 0.3, 1.08), new THREE.Vector3(0.4, 0.65, 1.08),
+      new THREE.Vector3(0, 0.78, 1.08),
+    ]);
+    add(new THREE.TubeGeometry(curve, 36, 0.075, 8, false), wood, [0, 0, 0]);
+    const stringGeometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, -0.78, 1.08), new THREE.Vector3(0, 0.02, 1.08), new THREE.Vector3(0, 0.72, 1.08),
+    ]);
+    const string = new THREE.Line(stringGeometry, new THREE.LineBasicMaterial({ color: '#edf1e8' }));
+    string.name = 'bow-string'; group.add(string);
+    add(new THREE.BoxGeometry(0.055, 0.055, 0.84), steel, [0, 0.02, 1.27]);
+    const arrowTip = add(new THREE.ConeGeometry(0.09, 0.22, 5), brass, [0, 0.02, 1.78], [Math.PI / 2, 0, 0]);
+    arrowTip.rotation.x = Math.PI / 2;
+    for (const side of [-1, 1]) add(new THREE.BoxGeometry(0.06, 0.16, 0.09), accent, [side * 0.075, 0.02, 0.94], [0, 0, side * -0.35]);
+  }
+  if (id === 'cannon-turret') {
+    const base = add(new THREE.CylinderGeometry(0.39, 0.52, 0.24, 8), dark, [0, 0.14, 0.7]);
+    base.rotation.x = Math.PI / 2;
+    forward(new THREE.CylinderGeometry(0.19, 0.28, 0.76, 8), accent, [0, 0.22, 1.13]);
+    add(new THREE.TorusGeometry(0.22, 0.06, 8, 18), brass, [0, 0.22, 1.5]);
+    add(new THREE.SphereGeometry(0.18, 12, 10), steel, [0, 0.22, 1.54]);
+    for (const side of [-1, 1]) add(new THREE.BoxGeometry(0.15, 0.12, 0.45), brass, [side * 0.36, 0.12, 0.72], [0, side * 0.24, 0]);
+  }
   if (id === 'axe') {
     const start = new THREE.Vector3(0.19, 0.14, 0.98);
     const end = new THREE.Vector3(0.56, 0.14, 1.86);
@@ -717,6 +754,45 @@ function makeCannonballVisual() {
   return group;
 }
 
+function makeArrowVisual() {
+  const group = new THREE.Group();
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.027, 0.78, 7),
+    new THREE.MeshStandardMaterial({ color: '#8a5c34', roughness: 0.72 }));
+  shaft.rotation.x = Math.PI / 2; shaft.castShadow = true; group.add(shaft);
+  const point = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.24, 5),
+    new THREE.MeshStandardMaterial({ color: '#d9e0e2', metalness: 0.9, roughness: 0.2 }));
+  point.rotation.x = Math.PI / 2; point.position.z = 0.47; point.castShadow = true; group.add(point);
+  for (const side of [-1, 1]) {
+    const feather = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.035, 0.24),
+      new THREE.MeshStandardMaterial({ color: side < 0 ? '#d9a76d' : '#f4e5c8', roughness: 0.62 }));
+    feather.position.set(side * 0.055, 0, -0.32); feather.rotation.y = side * -0.3; group.add(feather);
+  }
+  group.visible = false;
+  return group;
+}
+
+function makeCannonTurretVisual() {
+  const group = new THREE.Group(); group.visible = false;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.22, 8),
+    new THREE.MeshStandardMaterial({ color: '#313b39', metalness: 0.72, roughness: 0.34 }));
+  base.position.y = 0.12; base.castShadow = true; group.add(base);
+  const turntable = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.14, 8),
+    new THREE.MeshStandardMaterial({ color: '#d5a36c', metalness: 0.76, roughness: 0.28 }));
+  turntable.position.y = 0.3; turntable.castShadow = true; group.add(turntable);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.23, 0.82, 8),
+    new THREE.MeshStandardMaterial({ color: '#ffa36b', metalness: 0.64, roughness: 0.3 }));
+  barrel.rotation.x = Math.PI / 2; barrel.position.set(0, 0.43, 0.24); barrel.castShadow = true; group.add(barrel);
+  const muzzle = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.055, 8, 18),
+    new THREE.MeshStandardMaterial({ color: '#e0e5df', metalness: 0.9, roughness: 0.2 }));
+  muzzle.position.set(0, 0.43, 0.66); group.add(muzzle);
+  for (const side of [-1, 1]) {
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.12, 10),
+      new THREE.MeshStandardMaterial({ color: '#a9794c', metalness: 0.58, roughness: 0.38 }));
+    wheel.rotation.z = Math.PI / 2; wheel.position.set(side * 0.42, 0.16, 0); group.add(wheel);
+  }
+  return group;
+}
+
 function makeKnifeProjectileVisual() {
   const group = new THREE.Group();
   const wood = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.28, 7),
@@ -773,6 +849,7 @@ export class Arena {
   private hookTetherStrips: EnergyStrip[] = [];
   private webVisuals: THREE.Group[] = [];
   private spikeVisuals: THREE.Group[] = [];
+  private turretVisuals: THREE.Group[] = [];
   private zoneVisuals: THREE.Group[] = [];
   private appleVisuals: THREE.Group[] = [];
   private diceVisuals: DiceVisual[] = [];
@@ -880,7 +957,15 @@ export class Arena {
       const base = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.3, 0.12, 8),
         new THREE.MeshStandardMaterial({ color: '#486b38', roughness: 0.62 }));
       base.position.y = 0.06; spike.add(base);
+      for (const side of [-1, 1]) {
+        const thorn = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.54, 5),
+          new THREE.MeshStandardMaterial({ color: '#e9a36c', metalness: 0.48, roughness: 0.3 }));
+        thorn.position.set(side * 0.31, 0.23, 0); thorn.rotation.z = side * -0.74; thorn.visible = false; thorn.castShadow = true; spike.add(thorn);
+      }
       this.scene.add(spike); this.spikeVisuals.push(spike);
+    }
+    for (let i = 0; i < 12; i++) {
+      const turret = makeCannonTurretVisual(); this.scene.add(turret); this.turretVisuals.push(turret);
     }
     for (let i = 0; i < 20; i++) {
       const die = makeDiceVisual(); this.scene.add(die.group); this.diceVisuals.push(die);
@@ -946,6 +1031,7 @@ export class Arena {
     this.previous = w.balls.map(b => ({ x: b.x, y: b.y }));
     this.zoneVisuals.forEach(zone => { zone.visible = false; });
     this.appleVisuals.forEach(apple => { apple.visible = false; });
+    this.turretVisuals.forEach(turret => { turret.visible = false; });
     this.chessRouteVisuals.forEach(mesh => { if (mesh) { this.scene.remove(mesh); mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); } });
     this.chessRouteVisuals = []; this.chessRouteKeys = [];
     this.diceVisuals.forEach(die => { die.group.visible = false; });
@@ -972,9 +1058,9 @@ export class Arena {
       material.map?.dispose(); material.dispose();
     });
     this.damageBubbles = [];
-    this.projectiles.forEach(({ orb, shard, streak, hook, bullet, cannonball, knife, rocket }) => {
+    this.projectiles.forEach(({ orb, shard, streak, hook, bullet, cannonball, knife, rocket, arrow }) => {
       orb.visible = false; shard.visible = false; streak.visible = false; hook.visible = false;
-      bullet.visible = false; cannonball.visible = false; knife.visible = false; rocket.visible = false;
+      bullet.visible = false; cannonball.visible = false; knife.visible = false; rocket.visible = false; arrow.visible = false;
     });
   }
 
@@ -1334,28 +1420,31 @@ export class Arena {
       const cannonball = makeCannonballVisual();
       const knife = makeKnifeProjectileVisual();
       const rocket = makeRocketVisual();
-      this.scene.add(orb, shard, streak, hook, bullet, cannonball, knife, rocket);
-      this.projectiles.push({ orb, shard, streak, hook, bullet, cannonball, knife, rocket });
+      const arrow = makeArrowVisual();
+      this.scene.add(orb, shard, streak, hook, bullet, cannonball, knife, rocket, arrow);
+      this.projectiles.push({ orb, shard, streak, hook, bullet, cannonball, knife, rocket, arrow });
     }
-    this.projectiles.forEach(({ orb, shard, streak, hook, bullet, cannonball, knife, rocket }, i) => {
+    this.projectiles.forEach(({ orb, shard, streak, hook, bullet, cannonball, knife, rocket, arrow }, i) => {
       const shot = w.projectiles[i];
       const weapon = shot?.weapon ?? '';
       const isBullet = weapon === 'machine' || weapon === 'machine-gun';
-      const isCannonball = weapon === 'cannon';
+      const isCannonball = weapon === 'cannon' || weapon === 'cannon-turret';
       const isKnife = weapon === 'thief';
       const isRocket = weapon === 'orange';
+      const isArrow = shot?.kind === 'arrow';
       const isShard = shot?.kind === 'ice' || weapon === 'glass';
-      orb.visible = !!shot && !isBullet && !isCannonball && !isKnife && !isRocket && shot.kind !== 'hook' && !isShard;
+      orb.visible = !!shot && !isBullet && !isCannonball && !isKnife && !isRocket && !isArrow && shot.kind !== 'hook' && !isShard;
       shard.visible = !!shot && isShard;
-      streak.visible = !!shot && shot.kind !== 'hook' && !isKnife && !this.lowEffects && !this.reducedMotion.matches;
+      streak.visible = !!shot && shot.kind !== 'hook' && !isKnife && !isArrow && !this.lowEffects && !this.reducedMotion.matches;
       hook.visible = !!shot && shot.kind === 'hook';
       bullet.visible = !!shot && isBullet;
       cannonball.visible = !!shot && isCannonball;
       knife.visible = !!shot && isKnife;
       rocket.visible = !!shot && isRocket;
+      arrow.visible = !!shot && isArrow;
       if (shot) {
         const owner = w.balls[shot.owner];
-        const height = owner?.radius ? owner.radius + 0.14 : 0.35;
+        const height = shot.weapon === 'cannon-turret' ? 0.58 : owner?.radius ? owner.radius + 0.14 : 0.35;
         const radius = shot.radius ?? 0.22;
         orb.position.set(shot.x, height, shot.y); orb.scale.setScalar(radius);
         (orb.material as THREE.MeshBasicMaterial).color.set(shot.color ?? '#ff9566');
@@ -1373,6 +1462,7 @@ export class Arena {
         cannonball.position.set(shot.x, height, shot.y); cannonball.rotation.y = yaw;
         knife.position.set(shot.x, height, shot.y); knife.rotation.y = yaw;
         rocket.position.set(shot.x, height, shot.y); rocket.rotation.y = yaw;
+        arrow.position.set(shot.x, height, shot.y); arrow.rotation.y = yaw;
         const rocketBody = rocket.children[0] as THREE.Mesh;
         (rocketBody.material as THREE.MeshStandardMaterial).color.set(shot.color ?? '#de7a43');
         const knifeBlade = knife.children[2] as THREE.Mesh | undefined;
@@ -1451,11 +1541,32 @@ export class Arena {
       if (!trap) return;
       spike.position.set(trap.x, 0, trap.y);
       spike.rotation.y = ((trap.owner + i) % 2 ? 1 : -1) * 0.32;
-      spike.scale.setScalar(Math.min(1, trap.ttl / 60));
+      const heavy = trap.type === 'heavy';
+      spike.scale.setScalar(Math.min(1, trap.ttl / 60) * (heavy ? 1.55 : 1));
+      spike.children[2].visible = heavy; spike.children[3].visible = heavy;
       const material = (spike.children[0] as THREE.Mesh).material as THREE.MeshStandardMaterial;
       material.color.set(trap.color);
       material.emissive.set(trap.color);
-      material.emissiveIntensity = 0.12;
+      material.emissiveIntensity = heavy ? 0.28 : 0.12;
+      const baseMaterial = (spike.children[1] as THREE.Mesh).material as THREE.MeshStandardMaterial;
+      baseMaterial.color.set(heavy ? '#75533e' : '#486b38');
+      for (const thorn of spike.children.slice(2)) {
+        const thornMaterial = (thorn as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        thornMaterial.color.set(trap.color); thornMaterial.emissive.set(trap.color); thornMaterial.emissiveIntensity = 0.2;
+      }
+    });
+    this.turretVisuals.forEach((visual, index) => {
+      const turret = w.cannonTurrets[index]; visual.visible = !!turret;
+      if (!turret) return;
+      visual.position.set(turret.x, 0, turret.y);
+      const owner = w.balls[turret.owner];
+      const target = owner && w.balls.filter(ball => ball.team !== owner.team && ball.hp > 0)
+        .sort((a, b) => Math.hypot(a.x - turret.x, a.y - turret.y) - Math.hypot(b.x - turret.x, b.y - turret.y))[0];
+      if (target) visual.rotation.y = Math.PI / 2 - Math.atan2(target.y - turret.y, target.x - turret.x);
+      const barrelMaterial = (visual.children[2] as THREE.Mesh).material as THREE.MeshStandardMaterial;
+      barrelMaterial.color.set(turret.hp <= 3 ? '#ed775d' : turret.color);
+      barrelMaterial.emissive.set(turret.color); barrelMaterial.emissiveIntensity = 0.1 + (1 - turret.hp / turret.maxHp) * 0.35;
+      visual.scale.setScalar(0.92 + Math.min(1, turret.ttl / 120) * 0.08);
     });
     const dicePatterns = [[], [4], [0, 1], [0, 4, 1], [0, 2, 3, 1], [0, 2, 4, 3, 1], [0, 2, 5, 6, 3, 1]];
     this.diceVisuals.forEach((die, index) => {

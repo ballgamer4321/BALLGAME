@@ -397,6 +397,7 @@ onlineAim = connectRooms(state => {
   world = { ...state.world, contacts: new Set(state.world.contacts), collisionLimitHits: state.world.collisionLimitHits,
     diceTraps: state.world.diceTraps ?? [], iceBombs: state.world.iceBombs ?? [],
     hookTethers: state.world.hookTethers ?? [], damageZones: state.world.damageZones ?? [], apples: state.world.apples ?? [],
+    cannonTurrets: state.world.cannonTurrets ?? [],
     nextHazardId: state.world.nextHazardId ?? 1 };
   arena.afterStep(world);
   audio.playEvents(world.events, world.tick);
