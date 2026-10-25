@@ -81,6 +81,7 @@ export function connectRooms(onState: (s: Snapshot) => void, onLeave: () => void
     const preparing=!!data && (data.phase==='select' || data.phase==='aim');
     overlay.hidden=!preparing;
     overlay.classList.toggle('is-aiming',!!data && data.phase==='aim');
+    overlay.querySelector('.selection-shell')!.classList.toggle('is-aiming',!!data && data.phase==='aim');
     viewport.classList.toggle('selection-active',preparing);
     if(!data || !preparing)return;
     const chosen=data.players.filter(player=>player.chosen).length;
